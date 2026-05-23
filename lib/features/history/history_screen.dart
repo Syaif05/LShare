@@ -79,25 +79,8 @@ class HistoryScreen extends ConsumerWidget {
   }
 
   void _openFolder(BuildContext context, TransferModel item) async {
-    final localPath = item.localPath;
-    if (localPath == null) return;
-    
-    final file = File(localPath);
-    final directory = file.parent;
-    if (!await directory.exists()) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Folder penyimpanan tidak ditemukan'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
     try {
-      await OpenFilex.open(directory.path);
+      await FileUtils.openDownloadsFolder();
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();

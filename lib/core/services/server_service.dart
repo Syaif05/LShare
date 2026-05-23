@@ -58,7 +58,7 @@ class ServerService {
         );
       });
 
-      // POST /request - File transfer request from sender
+      // POST /request - File transfer request from sender (supports batch)
       router.post('/request', (Request request) async {
         try {
           final payload = await request.readAsString();
@@ -67,36 +67,67 @@ class ServerService {
           final connectionInfo = request.context['shelf.connection_info'] as HttpConnectionInfo?;
           final senderIp = connectionInfo?.remoteAddress.address;
 
-          final transferId = requestData['id'] as String;
-          final fileName = requestData['fileName'] as String;
-          final fileSize = requestData['fileSize'] as int;
           final fromDevice = requestData['fromDevice'] as String;
           final toDevice = requestData['toDevice'] as String;
-          final mimeType = requestData['mimeType'] as String?;
 
-          final transfer = TransferModel(
-            id: transferId,
-            fileName: fileName,
-            fileSize: fileSize,
-            fromDevice: fromDevice,
-            toDevice: toDevice,
-            status: TransferStatus.pending,
-            progress: 0.0,
-            timestamp: DateTime.now(),
-            mimeType: mimeType,
-            isSent: false,
-            senderIp: senderIp,
-          );
+          final List<TransferModel> transfers = [];
+
+          if (requestData['isBatch'] == true) {
+            final filesData = requestData['files'] as List<dynamic>;
+            for (var fileData in filesData) {
+              transfers.add(TransferModel(
+                id: fileData['id'] as String,
+                fileName: fileData['fileName'] as String,
+                fileSize: fileData['fileSize'] as int,
+                fromDevice: fromDevice,
+                toDevice: toDevice,
+                status: TransferStatus.pending,
+                progress: 0.0,
+                timestamp: DateTime.now(),
+                mimeType: fileData['mimeType'] as String?,
+                isSent: false,
+                senderIp: senderIp,
+              ));
+            }
+          } else {
+            // Legacy / Single-file request
+            final transferId = requestData['id'] as String;
+            final fileName = requestData['fileName'] as String;
+            final fileSize = requestData['fileSize'] as int;
+            final mimeType = requestData['mimeType'] as String?;
+
+            transfers.add(TransferModel(
+              id: transferId,
+              fileName: fileName,
+              fileSize: fileSize,
+              fromDevice: fromDevice,
+              toDevice: toDevice,
+              status: TransferStatus.pending,
+              progress: 0.0,
+              timestamp: DateTime.now(),
+              mimeType: mimeType,
+              isSent: false,
+              senderIp: senderIp,
+            ));
+          }
+
+          if (transfers.isEmpty) {
+            return Response.badRequest(body: 'Request contains no files');
+          }
 
           final completer = Completer<bool>();
-          _pendingRequests[transferId] = completer;
+          for (var t in transfers) {
+            _pendingRequests[t.id] = completer;
+          }
 
           // Trigger the UI overlay and notify ReceiveProvider
           final isAccepted = await _ref
               .read(receiveProvider.notifier)
-              .handleIncomingRequest(transfer, completer);
+              .handleIncomingRequestBatch(transfers, completer);
 
-          _pendingRequests.remove(transferId);
+          for (var t in transfers) {
+            _pendingRequests.remove(t.id);
+          }
 
           return Response.ok(
             jsonEncode({'status': isAccepted ? 'accepted' : 'rejected'}),

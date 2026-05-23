@@ -5,21 +5,25 @@ import '../../core/services/notification_service.dart';
 import '../history/history_provider.dart';
 
 class ReceiveState {
-  final TransferModel? activeRequest;
+  final List<TransferModel>? activeRequestBatch;
   final Map<String, TransferModel> activeTransfers;
 
   const ReceiveState({
-    this.activeRequest,
+    this.activeRequestBatch,
     this.activeTransfers = const {},
   });
 
+  TransferModel? get activeRequest => (activeRequestBatch != null && activeRequestBatch!.isNotEmpty)
+      ? activeRequestBatch!.first
+      : null;
+
   ReceiveState copyWith({
-    TransferModel? activeRequest,
+    List<TransferModel>? activeRequestBatch,
     Map<String, TransferModel>? activeTransfers,
     bool clearActiveRequest = false,
   }) {
     return ReceiveState(
-      activeRequest: clearActiveRequest ? null : (activeRequest ?? this.activeRequest),
+      activeRequestBatch: clearActiveRequest ? null : (activeRequestBatch ?? this.activeRequestBatch),
       activeTransfers: activeTransfers ?? this.activeTransfers,
     );
   }
@@ -35,40 +39,48 @@ class ReceiveNotifier extends StateNotifier<ReceiveState> {
 
   ReceiveNotifier(this._ref) : super(const ReceiveState());
 
-  /// Handles an incoming transfer request by saving the completer and displaying a prompt.
-  Future<bool> handleIncomingRequest(TransferModel transfer, Completer<bool> completer) async {
+  /// Handles an incoming transfer request batch by saving the completer and displaying a prompt.
+  Future<bool> handleIncomingRequestBatch(List<TransferModel> transfers, Completer<bool> completer) async {
     // If there's an active request already pending, reject it to prioritize the newer one.
     if (_activeCompleter != null && !_activeCompleter!.isCompleted) {
       _activeCompleter!.complete(false);
     }
 
     _activeCompleter = completer;
-    state = state.copyWith(activeRequest: transfer);
+    state = state.copyWith(activeRequestBatch: transfers);
 
     // Auto-dismiss after 30 seconds
+    final batchId = transfers.first.id;
     Future.delayed(const Duration(seconds: 30), () {
-      if (state.activeRequest?.id == transfer.id) {
-        rejectRequest(transfer.id);
+      if (state.activeRequestBatch != null &&
+          state.activeRequestBatch!.isNotEmpty &&
+          state.activeRequestBatch!.first.id == batchId) {
+        rejectRequestBatch();
       }
     });
 
     return completer.future;
   }
 
-  /// Accept the incoming file transfer request.
-  void acceptRequest(String id) {
-    if (state.activeRequest?.id == id) {
+  /// Legacy single request compatibility wrapper.
+  Future<bool> handleIncomingRequest(TransferModel transfer, Completer<bool> completer) async {
+    return handleIncomingRequestBatch([transfer], completer);
+  }
+
+  /// Accept the incoming batch transfer request.
+  void acceptRequestBatch() {
+    if (state.activeRequestBatch != null && state.activeRequestBatch!.isNotEmpty) {
       if (_activeCompleter != null && !_activeCompleter!.isCompleted) {
         _activeCompleter!.complete(true);
       }
 
-      final updatedTransfer = state.activeRequest!.copyWith(
-        status: TransferStatus.transferring,
-        progress: 0.0,
-      );
-
       final newTransfers = Map<String, TransferModel>.from(state.activeTransfers);
-      newTransfers[id] = updatedTransfer;
+      for (var transfer in state.activeRequestBatch!) {
+        newTransfers[transfer.id] = transfer.copyWith(
+          status: TransferStatus.transferring,
+          progress: 0.0,
+        );
+      }
 
       state = state.copyWith(
         activeTransfers: newTransfers,
@@ -77,20 +89,32 @@ class ReceiveNotifier extends StateNotifier<ReceiveState> {
     }
   }
 
-  /// Reject the incoming file transfer request.
-  void rejectRequest(String id) {
-    if (state.activeRequest?.id == id) {
+  /// Legacy single accept wrapper.
+  void acceptRequest(String id) {
+    acceptRequestBatch();
+  }
+
+  /// Reject the incoming batch transfer request.
+  void rejectRequestBatch() {
+    if (state.activeRequestBatch != null && state.activeRequestBatch!.isNotEmpty) {
       if (_activeCompleter != null && !_activeCompleter!.isCompleted) {
         _activeCompleter!.complete(false);
       }
       
-      final rejectedTransfer = state.activeRequest!.copyWith(
-        status: TransferStatus.rejected,
-      );
-      _ref.read(historyProvider.notifier).addTransfer(rejectedTransfer);
+      for (var transfer in state.activeRequestBatch!) {
+        final rejectedTransfer = transfer.copyWith(
+          status: TransferStatus.rejected,
+        );
+        _ref.read(historyProvider.notifier).addTransfer(rejectedTransfer);
+      }
       
       state = state.copyWith(clearActiveRequest: true);
     }
+  }
+
+  /// Legacy single reject wrapper.
+  void rejectRequest(String id) {
+    rejectRequestBatch();
   }
 
   /// Update the download progress of a running transfer.

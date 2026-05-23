@@ -94,6 +94,15 @@ class SendNotifier extends StateNotifier<SendState> {
     );
   }
 
+  /// Sets shared files from Android external share sheet.
+  void setSharedFiles(List<PlatformFile> files) {
+    state = state.copyWith(
+      selectedFiles: files,
+      clearTransfers: true,
+      currentSendingIndex: -1,
+    );
+  }
+
   /// Clear all selected files.
   void clearFiles() {
     state = state.copyWith(
@@ -104,7 +113,7 @@ class SendNotifier extends StateNotifier<SendState> {
     );
   }
 
-  /// Start sequential sending of all selected files.
+  /// Start batch sending of all selected files.
   Future<void> startSend() async {
     final files = state.selectedFiles;
     final target = state.targetDevice;
@@ -122,12 +131,15 @@ class SendNotifier extends StateNotifier<SendState> {
     final senderName = _ref.read(deviceNameProvider);
     const senderId = 'local-device';
 
+    // Generate batch timestamp once to ensure IDs remain grouped/synchronized
+    final batchTimestamp = DateTime.now().millisecondsSinceEpoch;
+
     // Build initial pending transfer models for all selected files
     final initialTransfers = files.asMap().entries.map((entry) {
       final idx = entry.key;
       final file = entry.value;
       return TransferModel(
-        id: '${DateTime.now().millisecondsSinceEpoch}_${idx}_${file.name}',
+        id: '${batchTimestamp}_${idx}_${file.name}',
         fileName: file.name,
         fileSize: file.size,
         fromDevice: senderName,
@@ -147,50 +159,28 @@ class SendNotifier extends StateNotifier<SendState> {
       currentSendingIndex: 0,
     );
 
-    // Send each file sequentially
-    for (int i = 0; i < files.length; i++) {
-      state = state.copyWith(currentSendingIndex: i);
-      final file = files[i];
-      final currentTransfer = state.transfers[i];
+    final transferIds = initialTransfers.map((t) => t.id).toList();
 
-      await _sendSingleFile(
-        index: i,
-        transfer: currentTransfer,
-        file: file,
-        target: target,
-        senderName: senderName,
-        senderId: senderId,
-      );
-    }
-
-    // Set sending index to -1 indicating completion of the queue
-    state = state.copyWith(currentSendingIndex: -1);
-  }
-
-  Future<void> _sendSingleFile({
-    required int index,
-    required TransferModel transfer,
-    required PlatformFile file,
-    required DeviceModel target,
-    required String senderName,
-    required String senderId,
-  }) async {
-    await _transferService.sendFile(
+    await _transferService.sendBatch(
       target: target,
-      file: file,
+      files: files,
+      transferIds: transferIds,
       senderName: senderName,
       senderId: senderId,
-      onProgress: (progress) {
+      onProgress: (index, progress) {
         if (index < state.transfers.length) {
           final updatedTransfers = List<TransferModel>.from(state.transfers);
           updatedTransfers[index] = updatedTransfers[index].copyWith(
             status: TransferStatus.transferring,
             progress: progress,
           );
-          state = state.copyWith(transfers: updatedTransfers);
+          state = state.copyWith(
+            transfers: updatedTransfers,
+            currentSendingIndex: index,
+          );
         }
       },
-      onStatusChange: (statusStr, errorMsg) {
+      onStatusChange: (index, statusStr, errorMsg) {
         if (index >= state.transfers.length) return;
 
         TransferStatus newStatus;
@@ -227,6 +217,7 @@ class SendNotifier extends StateNotifier<SendState> {
         state = state.copyWith(
           transfers: updatedTransfers,
           errorMessage: errorMsg,
+          currentSendingIndex: index,
         );
 
         if (newStatus == TransferStatus.done ||
@@ -236,5 +227,8 @@ class SendNotifier extends StateNotifier<SendState> {
         }
       },
     );
+
+    // Set sending index to -1 indicating completion of the queue
+    state = state.copyWith(currentSendingIndex: -1);
   }
 }

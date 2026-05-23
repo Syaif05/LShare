@@ -8,12 +8,14 @@ class SettingsState {
   final bool clipboardAutoSync;
   final bool confirmBeforeReceive;
   final String saveFolder;
+  final bool backgroundRunning;
 
   const SettingsState({
     required this.deviceName,
     required this.clipboardAutoSync,
     required this.confirmBeforeReceive,
     required this.saveFolder,
+    required this.backgroundRunning,
   });
 
   SettingsState copyWith({
@@ -21,12 +23,14 @@ class SettingsState {
     bool? clipboardAutoSync,
     bool? confirmBeforeReceive,
     String? saveFolder,
+    bool? backgroundRunning,
   }) {
     return SettingsState(
       deviceName: deviceName ?? this.deviceName,
       clipboardAutoSync: clipboardAutoSync ?? this.clipboardAutoSync,
       confirmBeforeReceive: confirmBeforeReceive ?? this.confirmBeforeReceive,
       saveFolder: saveFolder ?? this.saveFolder,
+      backgroundRunning: backgroundRunning ?? this.backgroundRunning,
     );
   }
 }
@@ -48,6 +52,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   static const String _keyClipboardAutoSync = 'lshare_settings_clipboard_sync';
   static const String _keyConfirmReceive = 'lshare_settings_confirm_receive';
   static const String _keySaveFolder = 'lshare_settings_save_folder';
+  static const String _keyBackgroundRunning = 'lshare_settings_background_running';
 
   SettingsNotifier()
       : super(const SettingsState(
@@ -55,6 +60,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
           clipboardAutoSync: false,
           confirmBeforeReceive: true,
           saveFolder: 'Download/LShare',
+          backgroundRunning: false,
         )) {
     loadSettings();
   }
@@ -94,12 +100,14 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       final clipboardSync = prefs.getBool(_keyClipboardAutoSync) ?? false;
       final confirm = prefs.getBool(_keyConfirmReceive) ?? true;
       final folder = prefs.getString(_keySaveFolder) ?? 'Download/LShare';
+      final bgRunning = prefs.getBool(_keyBackgroundRunning) ?? false;
 
       state = SettingsState(
         deviceName: storedName,
         clipboardAutoSync: clipboardSync,
         confirmBeforeReceive: confirm,
         saveFolder: folder,
+        backgroundRunning: bgRunning,
       );
     } catch (e) {
       print('Error loading settings: $e');
@@ -147,6 +155,17 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       await prefs.setString(_keySaveFolder, folder);
     } catch (e) {
       print('Error saving folder: $e');
+    }
+  }
+
+  /// Updates the background running toggle.
+  Future<void> updateBackgroundRunning(bool val) async {
+    state = state.copyWith(backgroundRunning: val);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyBackgroundRunning, val);
+    } catch (e) {
+      print('Error saving background running toggle: $e');
     }
   }
 }

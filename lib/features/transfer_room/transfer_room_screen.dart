@@ -66,6 +66,20 @@ class _TransferRoomScreenState extends ConsumerState<TransferRoomScreen> {
   final ScrollController _scrollController = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final sendNotifier = ref.read(sendProvider.notifier);
+      final sendState = ref.read(sendProvider);
+      // Auto-start sending if files are queued from external share intent
+      if (sendState.selectedFiles.isNotEmpty && sendState.targetDevice == null) {
+        sendNotifier.setTargetDevice(widget.device);
+        sendNotifier.startSend();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
@@ -150,27 +164,9 @@ class _TransferRoomScreenState extends ConsumerState<TransferRoomScreen> {
   }
 
   void _openFolder(BuildContext context, TransferModel item) async {
-    final localPath = item.localPath;
-    if (localPath == null) return;
-
-    final file = File(localPath);
-    final directory = file.parent;
     final messenger = ScaffoldMessenger.of(context);
-
-    final dirExists = await directory.exists();
-    if (!dirExists) {
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Folder penyimpanan tidak ditemukan'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
     try {
-      await OpenFilex.open(directory.path);
+      await FileUtils.openDownloadsFolder();
     } catch (e) {
       messenger.clearSnackBars();
       messenger.showSnackBar(

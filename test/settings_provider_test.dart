@@ -70,5 +70,18 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getBool('lshare_settings_confirm_receive'), true);
     });
+
+    test('updateBackgroundRunning saves to SharedPreferences', () async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final notifier = container.read(settingsProvider.notifier);
+      await notifier.updateBackgroundRunning(true);
+
+      expect(container.read(settingsProvider).backgroundRunning, true);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('lshare_settings_background_running'), true);
+    });
   });
 }

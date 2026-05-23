@@ -1,6 +1,11 @@
 // lib/app.dart
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter_background/flutter_background.dart';
 import 'core/constants/app_strings.dart';
 import 'features/home/home_screen.dart';
 import 'features/history/history_screen.dart';
@@ -17,6 +22,7 @@ import 'core/constants/app_constants.dart';
 import 'core/services/discovery_service.dart';
 import 'features/devices/devices_provider.dart';
 import 'features/settings/settings_provider.dart';
+import 'features/send/send_provider.dart';
 
 class LShareApp extends StatelessWidget {
   const LShareApp({super.key});
@@ -44,6 +50,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   late ServerService _serverService;
   late ClipboardService _clipboardService;
   late DiscoveryService _discoveryService;
+  StreamSubscription? _intentDataStreamSubscription;
 
   @override
   void initState() {
@@ -62,11 +69,88 @@ class _MainShellState extends ConsumerState<MainShell> {
       ref.read(notificationServiceProvider).initialize();
       // Start Clipboard Sync Service
       _clipboardService.startService();
+      // Initialize Sharing Intent Listener
+      _initSharingIntent();
+      // Initialize Background execution service
+      _initBackground().then((_) {
+        if (Platform.isAndroid) {
+          final bgRunning = ref.read(settingsProvider).backgroundRunning;
+          if (bgRunning) {
+            FlutterBackground.enableBackgroundExecution().then((success) {
+              print('Background execution enabled on startup: $success');
+            });
+          }
+        }
+      });
     });
+  }
+
+  Future<void> _initBackground() async {
+    if (Platform.isAndroid) {
+      const androidConfig = FlutterBackgroundAndroidConfig(
+        notificationTitle: "LShare Server Aktif",
+        notificationText: "Menunggu berkas masuk di jaringan lokal...",
+        notificationImportance: AndroidNotificationImportance.normal,
+        notificationIcon: AndroidResource(name: 'launcher_icon', defType: 'mipmap'),
+      );
+      
+      bool success = await FlutterBackground.initialize(androidConfig: androidConfig);
+      print('FlutterBackground initialized: $success');
+    }
+  }
+
+  void _initSharingIntent() {
+    // For sharing media while the app is running in memory
+    _intentDataStreamSubscription = ReceiveSharingIntent.instance.getMediaStream().listen((List<SharedMediaFile> value) {
+      _handleSharedMedia(value);
+    }, onError: (err) {
+      print("getIntentDataStream error: $err");
+    });
+
+    // For sharing media while the app was closed
+    ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> value) {
+      _handleSharedMedia(value);
+    });
+  }
+
+  void _handleSharedMedia(List<SharedMediaFile> media) async {
+    if (media.isEmpty) return;
+    
+    final List<PlatformFile> platformFiles = [];
+    for (var file in media) {
+      final ioFile = File(file.path);
+      if (await ioFile.exists()) {
+        final size = await ioFile.length();
+        final name = file.path.split(Platform.pathSeparator).last;
+        platformFiles.add(PlatformFile(
+          path: file.path,
+          name: name,
+          size: size,
+        ));
+      }
+    }
+    
+    if (platformFiles.isNotEmpty) {
+      ref.read(sendProvider.notifier).setSharedFiles(platformFiles);
+      setState(() {
+        _selectedIndex = 0;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${platformFiles.length} file dari aplikasi luar terdeteksi. Pilih perangkat tujuan untuk mengirim.'),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
   }
 
   @override
   void dispose() {
+    _intentDataStreamSubscription?.cancel();
     // Stop the HTTP Server when app closes (though OS might kill it first)
     _serverService.stopServer();
     // Stop discovery and broadcast
@@ -118,11 +202,27 @@ class _MainShellState extends ConsumerState<MainShell> {
       }
     });
 
+    // Listen for background running settings changes
+    ref.listen<bool>(
+      settingsProvider.select((state) => state.backgroundRunning),
+      (previous, next) async {
+        if (Platform.isAndroid) {
+          if (next) {
+            final success = await FlutterBackground.enableBackgroundExecution();
+            print("Background execution enabled dynamically: $success");
+          } else {
+            final success = await FlutterBackground.disableBackgroundExecution();
+            print("Background execution disabled dynamically: $success");
+          }
+        }
+      },
+    );
+
     // Listen for incoming transfer requests to show bottom sheet
-    ref.listen<TransferModel?>(
-      receiveProvider.select((state) => state.activeRequest),
+    ref.listen<List<TransferModel>?>(
+      receiveProvider.select((state) => state.activeRequestBatch),
       (previous, next) {
-        if (next != null) {
+        if (next != null && next.isNotEmpty) {
           showModalBottomSheet(
             context: context,
             isDismissible: false,
@@ -130,7 +230,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            builder: (context) => ReceiveBottomSheet(transfer: next),
+            builder: (context) => ReceiveBottomSheet(transfers: next),
           );
         }
       },

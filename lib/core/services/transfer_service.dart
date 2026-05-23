@@ -179,4 +179,177 @@ class TransferService {
       onStatusChange('failed', 'Kesalahan sistem: ${e.toString()}');
     }
   }
+
+  /// Sends a batch of files to the target device with a single confirmation.
+  Future<void> sendBatch({
+    required DeviceModel target,
+    required List<PlatformFile> files,
+    required List<String> transferIds,
+    required String senderName,
+    required String senderId,
+    required void Function(int index, double progress) onProgress,
+    required void Function(int index, String statusStr, String? message) onStatusChange,
+  }) async {
+    final dio = Dio();
+    
+    try {
+      // 1. Calculate MD5 Checksums for all files
+      final List<String> md5Checksums = [];
+      for (int i = 0; i < files.length; i++) {
+        onStatusChange(i, 'calculating_md5', null);
+        final md5Checksum = await calculateMD5(files[i]);
+        md5Checksums.add(md5Checksum);
+      }
+
+      // 2. Request Transfer (POST /request)
+      onStatusChange(0, 'requesting', null);
+      final requestUrl = 'http://${target.ip}:${target.port}/request';
+      
+      final List<Map<String, dynamic>> filesPayload = [];
+      for (int i = 0; i < files.length; i++) {
+        filesPayload.add({
+          'id': transferIds[i],
+          'fileName': files[i].name,
+          'fileSize': files[i].size,
+          'md5': md5Checksums[i],
+          'mimeType': lookupMimeType(files[i].path ?? files[i].name) ?? 'application/octet-stream',
+        });
+      }
+
+      final requestBody = {
+        'isBatch': true,
+        'fromDevice': senderName,
+        'toDevice': target.name,
+        'files': filesPayload,
+      };
+
+      final requestResponse = await dio.post(
+        requestUrl,
+        data: jsonEncode(requestBody),
+        options: Options(
+          headers: {'Content-Type': 'application/json'},
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 20),
+        ),
+      );
+
+      if (requestResponse.statusCode != 200) {
+        final errorMsg = 'Server merespon dengan kode ${requestResponse.statusCode}';
+        for (int i = 0; i < files.length; i++) {
+          onStatusChange(i, 'failed', errorMsg);
+        }
+        return;
+      }
+
+      final responseData = requestResponse.data;
+      final status = responseData is Map ? responseData['status'] : jsonDecode(responseData as String)['status'];
+
+      if (status == 'accepted') {
+        // 3. Upload each File (POST /receive) sequentially
+        for (int i = 0; i < files.length; i++) {
+          final file = files[i];
+          final transferId = transferIds[i];
+          final md5Checksum = md5Checksums[i];
+
+          onStatusChange(i, 'transferring', null);
+          final receiveUrl = 'http://${target.ip}:${target.port}/receive';
+
+          MultipartFile multipartFile;
+          if (file.path != null) {
+            multipartFile = await MultipartFile.fromFile(
+              file.path!,
+              filename: file.name,
+            );
+          } else if (file.bytes != null) {
+            multipartFile = MultipartFile.fromBytes(
+              file.bytes!,
+              filename: file.name,
+            );
+          } else {
+            onStatusChange(i, 'failed', 'Gagal membaca file dari penyimpanan');
+            continue;
+          }
+
+          final formData = FormData.fromMap({
+            'file': multipartFile,
+            'id': transferId,
+            'md5': md5Checksum,
+          });
+
+          try {
+            final uploadResponse = await dio.post(
+              receiveUrl,
+              data: formData,
+              onSendProgress: (sent, total) {
+                if (total > 0) {
+                  onProgress(i, sent / total);
+                }
+              },
+              options: Options(
+                connectTimeout: const Duration(seconds: 15),
+                sendTimeout: const Duration(minutes: 30),
+                receiveTimeout: const Duration(minutes: 30),
+              ),
+            );
+
+            if (uploadResponse.statusCode == 200) {
+              final uploadData = uploadResponse.data;
+              final uploadStatus = uploadData is Map ? uploadData['status'] : jsonDecode(uploadData as String)['status'];
+              
+              if (uploadStatus == 'received') {
+                onStatusChange(i, 'done', null);
+              } else {
+                onStatusChange(i, 'failed', 'Penerima gagal memproses file');
+              }
+            } else {
+              onStatusChange(i, 'failed', 'Gagal mengunggah file (HTTP ${uploadResponse.statusCode})');
+            }
+          } catch (e) {
+            onStatusChange(i, 'failed', 'Upload gagal: ${e.toString()}');
+          }
+        }
+      } else if (status == 'rejected') {
+        for (int i = 0; i < files.length; i++) {
+          onStatusChange(i, 'rejected', null);
+        }
+      } else {
+        for (int i = 0; i < files.length; i++) {
+          onStatusChange(i, 'failed', 'Ditolak dengan status: $status');
+        }
+      }
+    } on DioException catch (e) {
+      print('Batch Transfer DioException: ${e.type} - ${e.message}');
+      String errMsg = 'Transfer gagal: ';
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+          errMsg += 'Koneksi timeout. Pastikan perangkat tujuan aktif.';
+          break;
+        case DioExceptionType.sendTimeout:
+          errMsg += 'Pengiriman data timeout.';
+          break;
+        case DioExceptionType.receiveTimeout:
+          errMsg += 'Waktu respons penerima habis.';
+          break;
+        case DioExceptionType.badResponse:
+          errMsg += 'Perangkat tujuan memberikan respons error (${e.response?.statusCode}).';
+          break;
+        case DioExceptionType.connectionError:
+          errMsg += 'Gagal terhubung. Pastikan kedua perangkat terhubung ke WiFi yang sama.';
+          break;
+        case DioExceptionType.cancel:
+          errMsg += 'Transfer dibatalkan.';
+          break;
+        default:
+          errMsg += e.message ?? 'Kesalahan koneksi tidak dikenal.';
+      }
+      for (int i = 0; i < files.length; i++) {
+        onStatusChange(i, 'failed', errMsg);
+      }
+    } catch (e) {
+      print('Batch Transfer error: $e');
+      for (int i = 0; i < files.length; i++) {
+        onStatusChange(i, 'failed', 'Kesalahan sistem: ${e.toString()}');
+      }
+    }
+  }
 }

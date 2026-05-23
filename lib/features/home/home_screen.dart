@@ -9,6 +9,7 @@ import '../settings/settings_provider.dart';
 import '../transfer_room/transfer_room_screen.dart';
 import '../../shared/widgets/device_avatar.dart';
 import 'home_provider.dart';
+import '../send/send_provider.dart';
 
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -23,6 +24,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final devices = ref.watch(devicesProvider);
     final localIpAsync = ref.watch(localIpProvider);
+    final sendState = ref.watch(sendProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -34,6 +36,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildLocalDeviceCard(context, localIpAsync),
+          if (sendState.selectedFiles.isNotEmpty && sendState.currentSendingIndex == -1)
+            _buildSharedFilesBanner(context, sendState.selectedFiles.length),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
@@ -74,6 +78,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         foregroundColor: Colors.white,
         icon: const Icon(Icons.send_rounded),
         label: const Text(AppStrings.homeSendFile),
+      ),
+    );
+  }
+
+  Widget _buildSharedFilesBanner(BuildContext context, int count) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primaryContainer.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.share_rounded, color: AppColors.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '$count berkas siap dikirim dari aplikasi luar. Pilih perangkat di bawah untuk mulai mengirim.',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close_rounded, color: AppColors.primary, size: 20),
+            onPressed: () {
+              ref.read(sendProvider.notifier).clearFiles();
+            },
+          )
+        ],
       ),
     );
   }

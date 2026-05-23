@@ -153,6 +153,16 @@ class SettingsScreen extends ConsumerWidget {
                     ref.read(settingsProvider.notifier).updateConfirmBeforeReceive(val);
                   },
                 ),
+                const Divider(height: 1, indent: 70),
+                SwitchListTile(
+                  secondary: const Icon(Icons.android_rounded),
+                  title: const Text('Jalankan di Latar Belakang'),
+                  subtitle: const Text('Server tetap aktif saat aplikasi ditutup'),
+                  value: settings.backgroundRunning,
+                  onChanged: (val) {
+                    ref.read(settingsProvider.notifier).updateBackgroundRunning(val);
+                  },
+                ),
               ],
             ),
           ),
@@ -174,7 +184,7 @@ class SettingsScreen extends ConsumerWidget {
                 child: Icon(Icons.info_outline_rounded, color: AppColors.primary),
               ),
               title: Text(AppStrings.settingsAppVersion),
-              subtitle: Text('LShare v1.0.0 • Indonesia'),
+              subtitle: Text('LShare v1.1.1 • Indonesia'),
             ),
           ),
         ],

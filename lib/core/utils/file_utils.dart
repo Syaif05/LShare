@@ -1,7 +1,27 @@
 import 'dart:io';
+import 'package:flutter/services.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
 class FileUtils {
+  static const _channel = MethodChannel('com.syaifulloh.lshare/file_utils');
+
+  /// Opens the public Downloads folder or internal LShare directory.
+  static Future<void> openDownloadsFolder() async {
+    if (Platform.isAndroid) {
+      try {
+        await _channel.invokeMethod('openDownloadsFolder');
+      } catch (e) {
+        print('Error calling openDownloadsFolder MethodChannel: $e');
+        final saveDir = await getSaveDirectory();
+        await OpenFilex.open(saveDir.path);
+      }
+    } else {
+      final saveDir = await getSaveDirectory();
+      await OpenFilex.open(saveDir.path);
+    }
+  }
+
   /// Gets the directory where received files will be saved.
   /// Typically Android/data/com.syaifulloh.lshare/files/Downloads/LShare or similar,
   /// but we'll try to use the public Downloads directory if possible.
