@@ -24,10 +24,12 @@ class ServerService {
   final Ref _ref;
   HttpServer? _server;
   final Map<String, Completer<bool>> _pendingRequests = {};
+  int _port = kServerPort;
 
   ServerService(this._ref);
 
   bool get isRunning => _server != null;
+  int get port => _port;
 
   Future<void> startServer([String? deviceName]) async {
     if (_server != null) return;
@@ -230,9 +232,16 @@ class ServerService {
           .addMiddleware(logRequests())
           .addHandler(router.call);
 
-      _server = await shelf_io.serve(handler, '0.0.0.0', kServerPort);
+      try {
+        _server = await shelf_io.serve(handler, '0.0.0.0', kServerPort, shared: true);
+        _port = kServerPort;
+      } catch (e) {
+        print('Error binding to port $kServerPort, trying dynamic port... ($e)');
+        _server = await shelf_io.serve(handler, '0.0.0.0', 0, shared: true);
+        _port = _server!.port;
+      }
       _ref.read(serverRunningProvider.notifier).state = true;
-      print('HTTP Server running on http://$ip:$kServerPort');
+      print('HTTP Server running on http://$ip:$_port');
     } catch (e) {
       _ref.read(serverRunningProvider.notifier).state = false;
       print('Error starting HTTP server: $e');

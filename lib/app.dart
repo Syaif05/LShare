@@ -58,12 +58,12 @@ class _MainShellState extends ConsumerState<MainShell> {
     _serverService = ref.read(serverServiceProvider);
     _clipboardService = ref.read(clipboardServiceProvider);
     _discoveryService = ref.read(discoveryServiceProvider);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Start the HTTP Server
-      _serverService.startServer();
+      await _serverService.startServer();
       // Start discovery and broadcast
       final initialName = ref.read(deviceNameProvider);
-      _discoveryService.startBroadcast(initialName, kServerPort);
+      _discoveryService.startBroadcast(initialName, _serverService.port);
       ref.read(devicesProvider.notifier).startDiscovery();
       // Initialize Notification Service
       ref.read(notificationServiceProvider).initialize();
@@ -196,8 +196,9 @@ class _MainShellState extends ConsumerState<MainShell> {
     ref.listen<String>(deviceNameProvider, (previous, next) async {
       if (previous != next && next.isNotEmpty) {
         final discoveryService = ref.read(discoveryServiceProvider);
+        final serverService = ref.read(serverServiceProvider);
         await discoveryService.stopAll();
-        await discoveryService.startBroadcast(next, kServerPort);
+        await discoveryService.startBroadcast(next, serverService.port);
         ref.read(devicesProvider.notifier).startDiscovery();
       }
     });
