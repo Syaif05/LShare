@@ -8,7 +8,7 @@ final clipboardAuthStatusProvider = StateProvider<bool>((ref) => false);
 final clipboardDecryptedUrlProvider = StateProvider<String?>((ref) => null);
 final clipboardDecryptedKeyProvider = StateProvider<String?>((ref) => null);
 
-Future<void> initClipboardAuth(WidgetRef ref, SharedPreferences prefs) async {
+Future<void> initClipboardAuth(dynamic ref, SharedPreferences prefs) async {
   final savedPin = prefs.getString('clipboard_master_pin');
   if (savedPin != null) {
     if (await _tryUnlock(ref, savedPin)) return;
@@ -21,7 +21,7 @@ Future<void> initClipboardAuth(WidgetRef ref, SharedPreferences prefs) async {
   }
 }
 
-Future<bool> _tryUnlock(WidgetRef ref, String pin) async {
+Future<bool> _tryUnlock(dynamic ref, String pin) async {
   final url = CryptoUtils.decrypt(kEncryptedSupabaseUrl, pin);
   final key = CryptoUtils.decrypt(kEncryptedSupabaseAnonKey, pin);
   
@@ -39,7 +39,7 @@ Future<bool> _tryUnlock(WidgetRef ref, String pin) async {
   return false;
 }
 
-Future<bool> unlockWithPin(WidgetRef ref, String pin) async {
+Future<bool> unlockWithPin(dynamic ref, String pin) async {
   final success = await _tryUnlock(ref, pin);
   if (success) {
     final prefs = await SharedPreferences.getInstance();
@@ -48,7 +48,7 @@ Future<bool> unlockWithPin(WidgetRef ref, String pin) async {
   return success;
 }
 
-Future<void> unlockWithCredentials(WidgetRef ref, String url, String key) async {
+Future<void> unlockWithCredentials(dynamic ref, String url, String key) async {
   try {
     await Supabase.initialize(url: url, anonKey: key);
   } catch (_) {
@@ -63,7 +63,7 @@ Future<void> unlockWithCredentials(WidgetRef ref, String url, String key) async 
   await prefs.setString('viral_key', key);
 }
 
-Future<void> lockClipboard(WidgetRef ref) async {
+Future<void> lockClipboard(dynamic ref) async {
   ref.read(clipboardAuthStatusProvider.notifier).state = false;
   ref.read(clipboardDecryptedUrlProvider.notifier).state = null;
   ref.read(clipboardDecryptedKeyProvider.notifier).state = null;
