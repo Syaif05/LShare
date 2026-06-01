@@ -187,6 +187,7 @@ class TransferService {
     required List<String> transferIds,
     required String senderName,
     required String senderId,
+    required String groupId,
     required void Function(int index, double progress) onProgress,
     required void Function(int index, String statusStr, String? message) onStatusChange,
   }) async {
@@ -218,6 +219,7 @@ class TransferService {
 
       final requestBody = {
         'isBatch': true,
+        'groupId': groupId,
         'fromDevice': senderName,
         'toDevice': target.name,
         'files': filesPayload,

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/models/clipboard_model.dart';
 import '../../core/services/clipboard_service.dart';
+import '../../shared/widgets/neo_button.dart';
 import '../settings/settings_provider.dart';
 import 'clipboard_provider.dart';
+import '../../core/constants/app_colors.dart';
+import '../important_text/important_text_screen.dart';
 
 class ClipboardScreen extends ConsumerWidget {
   const ClipboardScreen({super.key});
@@ -14,15 +16,23 @@ class ClipboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final syncEnabled = ref.watch(clipboardSyncEnabledProvider);
-    final history = ref.watch(clipboardHistoryProvider);
-    final connectedDevices = ref.watch(clipboardConnectedDevicesProvider);
-    final isReconnecting = ref.watch(clipboardReconnectingProvider);
+    final history = ref.watch(filteredClipboardHistoryProvider);
+    final allHistory = ref.watch(clipboardHistoryProvider);
+    final connectedDevices = ref.watch(clipboardConnectionsProvider);
+    final isConnected = connectedDevices.isNotEmpty;
+    final errorMessage = ref.watch(clipboardErrorProvider);
+
+    // Build list of unique devices from all history
+    final devices = ['Semua', ...allHistory.map((e) => e.fromDevice).toSet()];
+    final activeFilter = ref.watch(clipboardFilterDeviceProvider) ?? 'Semua';
+    final activeSort = ref.watch(clipboardSortProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.paperWhite,
       appBar: AppBar(
-        title: const Text(AppStrings.clipboardTitle),
-        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          AppStrings.clipboardTitle,
+        ),
       ),
       body: CustomScrollView(
         slivers: [
@@ -30,16 +40,14 @@ class ClipboardScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Card(
-                elevation: 0,
-                color: syncEnabled ? AppColors.primaryContainer : AppColors.surface,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: syncEnabled 
-                        ? AppColors.primary.withValues(alpha: 0.3) 
-                        : AppColors.outline.withValues(alpha: 0.3),
-                  ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: syncEnabled ? AppColors.acidYellow : AppColors.paperWhite,
+                  border: Border.all(color: AppColors.neoBlack, width: 2),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [
+                    BoxShadow(color: AppColors.neoBlack, offset: Offset(4, 4)),
+                  ],
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -48,11 +56,15 @@ class ClipboardScreen extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          CircleAvatar(
-                            backgroundColor: syncEnabled ? AppColors.primary : AppColors.surfaceVariant,
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.neoBlack,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                             child: Icon(
-                              syncEnabled ? Icons.sync_rounded : Icons.sync_disabled_rounded,
-                              color: syncEnabled ? Colors.white : AppColors.textSecondary,
+                              syncEnabled ? Icons.cloud_sync_rounded : Icons.cloud_off_rounded,
+                              color: AppColors.acidYellow,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -61,18 +73,20 @@ class ClipboardScreen extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  AppStrings.clipboardSync,
+                                  'Supabase Sync',
                                   style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.neoBlack,
                                   ),
                                 ),
                                 SizedBox(height: 2),
                                 Text(
-                                  AppStrings.clipboardSyncSubtitle,
+                                  'Sinkronisasi via Cloud (Realtime)',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
                                   ),
                                 ),
                               ],
@@ -82,102 +96,78 @@ class ClipboardScreen extends ConsumerWidget {
                             value: syncEnabled,
                             onChanged: (value) {
                               ref.read(settingsProvider.notifier).updateClipboardAutoSync(value);
-                              ScaffoldMessenger.of(context).clearSnackBars();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    value 
-                                        ? 'Sinkronisasi clipboard diaktifkan' 
-                                        : 'Sinkronisasi clipboard dinonaktifkan',
-                                  ),
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
                             },
                           ),
                         ],
                       ),
                       if (syncEnabled) ...[
-                        const Divider(height: 24, thickness: 1),
+                        const Divider(height: 24, thickness: 2, color: AppColors.neoBlack),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Expanded(
+                              child: Text(
+                                'Status Koneksi:',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.neoBlack,
+                                ),
+                              ),
+                            ),
+                            NeoButton(
+                              onPressed: () => ref.read(clipboardServiceProvider).reconnect(),
+                              backgroundColor: isConnected ? AppColors.neoGreen : AppColors.error,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              shadowOffset: const Offset(2, 2),
                               child: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: connectedDevices.isEmpty 
-                                          ? Colors.orange 
-                                          : Colors.green,
-                                    ),
+                                  Icon(
+                                    isConnected ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
+                                    color: AppColors.paperWhite,
+                                    size: 16,
                                   ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      connectedDevices.isEmpty
-                                          ? 'Belum terhubung ke perangkat lain'
-                                          : 'Tersambung ke: ${connectedDevices.map((d) => d.name).join(', ')}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: connectedDevices.isEmpty
-                                            ? Colors.orange.shade800
-                                            : Colors.green.shade800,
-                                      ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    isConnected ? 'Terhubung' : 'Terputus',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.paperWhite,
+                                      fontSize: 12,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            TextButton.icon(
-                              onPressed: isReconnecting ? null : () async {
-                                final messenger = ScaffoldMessenger.of(context);
-                                ref.read(clipboardReconnectingProvider.notifier).state = true;
-                                messenger.clearSnackBars();
-                                messenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Menghubungkan ulang clipboard sync...'),
-                                    duration: Duration(seconds: 1),
-                                  ),
-                                );
-                                await ref.read(clipboardServiceProvider).reconnect();
-                                ref.read(clipboardReconnectingProvider.notifier).state = false;
-                                if (context.mounted) {
-                                  messenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Sinkronisasi selesai dipicu.'),
-                                      duration: Duration(seconds: 1),
-                                    ),
-                                  );
-                                }
-                              },
-                              icon: isReconnecting 
-                                  ? const SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                                      ),
-                                    )
-                                  : const Icon(Icons.refresh_rounded, size: 14),
-                              label: const Text(
-                                'Sinkronkan',
-                                style: TextStyle(fontSize: 12),
-                              ),
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                            ),
                           ],
                         ),
+                        if (errorMessage != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.errorContainer,
+                              border: Border.all(color: AppColors.error, width: 2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    errorMessage,
+                                    style: const TextStyle(
+                                      color: AppColors.neoBlack,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ],
                   ),
@@ -186,47 +176,139 @@ class ClipboardScreen extends ConsumerWidget {
             ),
           ),
 
-          // Current clipboard section header
-          if (history.isNotEmpty) ...[
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Text(
-                  AppStrings.clipboardCurrent,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ),
-            
-            // Current clipboard item card
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: _buildCurrentClipboardCard(context, ref, history.first),
-              ),
-            ),
-          ],
-
-          // History header
-          const SliverToBoxAdapter(
+          // Teks Penting Button
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 8),
-              child: Text(
-                AppStrings.clipboardHistory,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textSecondary,
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: NeoButton(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const ImportantTextScreen()));
+                },
+                backgroundColor: AppColors.paperWhite,
+                padding: const EdgeInsets.all(16),
+                shadowOffset: const Offset(4, 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.star_rounded, color: AppColors.acidYellow, size: 28),
+                    const SizedBox(width: 12),
+                    const Text('Teks Penting', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppColors.neoBlack)),
+                  ],
                 ),
               ),
             ),
           ),
 
-          // History list
+          if (allHistory.isNotEmpty) ...[
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Text(
+                  'KLIPBOARD SAAT INI',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                    color: AppColors.neoBlack,
+                  ),
+                ),
+              ),
+            ),
+            
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: _buildCurrentClipboardCard(context, ref, allHistory.first),
+              ),
+            ),
+          ],
+
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.only(left: 20, right: 20, top: 24, bottom: 8),
+              child: Text(
+                'RIWAYAT',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                  color: AppColors.neoBlack,
+                ),
+              ),
+            ),
+          ),
+
+          // Filter & Sort Row
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.paperWhite,
+                        border: Border.all(color: AppColors.neoBlack, width: 2),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(2, 2))],
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: activeFilter,
+                          isExpanded: true,
+                          icon: const Icon(Icons.filter_list_rounded, color: AppColors.neoBlack),
+                          items: devices.map((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(
+                                value,
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (newValue) {
+                            ref.read(clipboardFilterDeviceProvider.notifier).state = newValue;
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 1,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.paperWhite,
+                        border: Border.all(color: AppColors.neoBlack, width: 2),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(2, 2))],
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<ClipboardSort>(
+                          value: activeSort,
+                          isExpanded: true,
+                          icon: const Icon(Icons.sort_rounded, color: AppColors.neoBlack),
+                          items: const [
+                            DropdownMenuItem(value: ClipboardSort.newest, child: Text('Baru', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13))),
+                            DropdownMenuItem(value: ClipboardSort.oldest, child: Text('Lama', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13))),
+                          ],
+                          onChanged: (newValue) {
+                            if (newValue != null) {
+                              ref.read(clipboardSortProvider.notifier).state = newValue;
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           if (history.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
@@ -234,18 +316,27 @@ class ClipboardScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.content_paste_off_rounded,
-                      size: 64,
-                      color: AppColors.textDisabled.withValues(alpha: 0.5),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.paperWhite,
+                        border: Border.all(color: AppColors.neoBlack, width: 2),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(4, 4))],
+                      ),
+                      child: const Icon(
+                        Icons.content_paste_off_rounded,
+                        size: 48,
+                        color: AppColors.neoBlack,
+                      ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     const Text(
-                      AppStrings.clipboardEmpty,
+                      'Tidak ada riwayat',
                       style: TextStyle(
-                        fontSize: 16,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: AppColors.neoBlack,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ],
@@ -254,7 +345,7 @@ class ClipboardScreen extends ConsumerWidget {
             )
           else
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -271,15 +362,13 @@ class ClipboardScreen extends ConsumerWidget {
   }
 
   Widget _buildCurrentClipboardCard(BuildContext context, WidgetRef ref, ClipboardModel item) {
-    return Card(
-      elevation: 0,
-      color: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(
-          color: AppColors.primary,
-          width: 1.5,
-        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.paperWhite,
+        border: Border.all(color: AppColors.neoBlack, width: 2),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(4, 4))],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -288,14 +377,20 @@ class ClipboardScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.copy_all_rounded, color: AppColors.primary, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  'Dari: ${item.fromDevice}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.acidYellow,
+                    border: Border.all(color: AppColors.neoBlack, width: 1.5),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    item.fromDevice,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.neoBlack,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
                 const Spacer(),
@@ -303,34 +398,52 @@ class ClipboardScreen extends ConsumerWidget {
                   DateFormat('HH:mm').format(item.timestamp),
                   style: const TextStyle(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.neoBlack,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             SelectableText(
               item.text,
               style: const TextStyle(
-                fontSize: 15,
-                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.neoBlack,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                ElevatedButton.icon(
+                NeoButton(
+                  onPressed: () => ref.read(clipboardServiceProvider).toggleLock(item),
+                  backgroundColor: item.isLocked ? AppColors.neoBlack : AppColors.paperWhite,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shadowOffset: const Offset(2, 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(item.isLocked ? Icons.lock_rounded : Icons.lock_open_rounded, size: 16, color: item.isLocked ? AppColors.acidYellow : AppColors.neoBlack),
+                      const SizedBox(width: 8),
+                      Text(item.isLocked ? 'Terkunci' : 'Kunci', style: TextStyle(fontWeight: FontWeight.w900, color: item.isLocked ? AppColors.acidYellow : AppColors.neoBlack)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                NeoButton(
                   onPressed: () => _copyText(context, ref, item.text),
-                  icon: const Icon(Icons.content_copy_rounded, size: 16),
-                  label: const Text(AppStrings.clipboardCopy),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryContainer,
-                    foregroundColor: AppColors.primary,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                  backgroundColor: AppColors.neoBlack,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shadowOffset: const Offset(2, 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.copy_rounded, size: 16, color: AppColors.acidYellow),
+                      const SizedBox(width: 8),
+                      const Text('Salin Ulang', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.acidYellow)),
+                    ],
                   ),
                 ),
               ],
@@ -342,15 +455,13 @@ class ClipboardScreen extends ConsumerWidget {
   }
 
   Widget _buildHistoryCard(BuildContext context, WidgetRef ref, ClipboardModel item) {
-    return Card(
-      elevation: 0,
-      color: AppColors.surface,
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: AppColors.outline.withValues(alpha: 0.2),
-        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: AppColors.paperWhite,
+        border: Border.all(color: AppColors.neoBlack, width: 2),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(2, 2))],
       ),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
@@ -367,26 +478,43 @@ class ClipboardScreen extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 14,
-                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.neoBlack,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    '${item.fromDevice} • ${DateFormat('HH:mm').format(item.timestamp)}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
+                  Row(
+                    children: [
+                      Icon(Icons.devices_rounded, size: 12, color: Colors.grey.shade800),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${item.fromDevice} • ${DateFormat('HH:mm').format(item.timestamp)}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade800,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: 12),
+            NeoButton(
+              onPressed: () => ref.read(clipboardServiceProvider).toggleLock(item),
+              backgroundColor: item.isLocked ? AppColors.neoBlack : AppColors.paperWhite,
+              padding: const EdgeInsets.all(8),
+              shadowOffset: const Offset(2, 2),
+              child: Icon(item.isLocked ? Icons.lock_rounded : Icons.lock_open_rounded, size: 18, color: item.isLocked ? AppColors.acidYellow : AppColors.neoBlack),
+            ),
             const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.content_copy_rounded, size: 18),
+            NeoButton(
               onPressed: () => _copyText(context, ref, item.text),
-              color: AppColors.textSecondary,
-              tooltip: AppStrings.clipboardCopy,
+              backgroundColor: AppColors.acidYellow,
+              padding: const EdgeInsets.all(8),
+              shadowOffset: const Offset(2, 2),
+              child: const Icon(Icons.copy_rounded, size: 18, color: AppColors.neoBlack),
             ),
           ],
         ),
@@ -398,9 +526,9 @@ class ClipboardScreen extends ConsumerWidget {
     ref.read(clipboardActionsProvider).copyToSystemClipboard(text, 'Device Anda');
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(AppStrings.clipboardCopied),
-        duration: Duration(seconds: 1),
+      SnackBar(
+        content: const Text(AppStrings.clipboardCopied),
+        duration: const Duration(seconds: 1),
       ),
     );
   }

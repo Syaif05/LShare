@@ -9,6 +9,32 @@ final clipboardSyncEnabledProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).clipboardAutoSync;
 });
 final clipboardHistoryProvider = StateProvider<List<ClipboardModel>>((ref) => []);
+final clipboardErrorProvider = StateProvider<String?>((ref) => null);
+
+enum ClipboardSort { newest, oldest }
+
+final clipboardSortProvider = StateProvider<ClipboardSort>((ref) => ClipboardSort.newest);
+final clipboardFilterDeviceProvider = StateProvider<String?>((ref) => null);
+
+final filteredClipboardHistoryProvider = Provider<List<ClipboardModel>>((ref) {
+  final history = ref.watch(clipboardHistoryProvider);
+  final sort = ref.watch(clipboardSortProvider);
+  final deviceFilter = ref.watch(clipboardFilterDeviceProvider);
+
+  var result = List<ClipboardModel>.from(history);
+
+  if (deviceFilter != null && deviceFilter.isNotEmpty && deviceFilter != 'Semua') {
+    result = result.where((item) => item.fromDevice == deviceFilter).toList();
+  }
+
+  if (sort == ClipboardSort.newest) {
+    result.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+  } else {
+    result.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+  }
+
+  return result;
+});
 
 // Tracks the list of active connected device IP addresses
 final clipboardConnectionsProvider = StateProvider<List<String>>((ref) => []);

@@ -6,6 +6,7 @@ void main() {
     final now = DateTime.now();
     final model = TransferModel(
       id: '12345',
+      groupId: 'g-12345',
       fileName: 'test.png',
       fileSize: 1024,
       fromDevice: 'Sender Device',
@@ -22,6 +23,7 @@ void main() {
       final json = model.toJson();
 
       expect(json['id'], '12345');
+      expect(json['groupId'], 'g-12345');
       expect(json['fileName'], 'test.png');
       expect(json['fileSize'], 1024);
       expect(json['fromDevice'], 'Sender Device');
@@ -37,6 +39,7 @@ void main() {
     test('fromJson reconstructs model correctly', () {
       final json = {
         'id': '12345',
+        'groupId': 'g-12345',
         'fileName': 'test.png',
         'fileSize': 1024,
         'fromDevice': 'Sender Device',

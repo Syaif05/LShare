@@ -1,49 +1,47 @@
-# 🚀 LShare — Local Share & Clipboard Sync
+# 🚀 LShare — Local Share & Clipboard Sync v1.1.3
 
-LShare adalah aplikasi Android (Flutter) modern yang memungkinkan Anda melakukan transfer file (foto, video, dokumen) dan sinkronisasi clipboard (teks) secara nirkabel antar perangkat yang terhubung ke jaringan WiFi/LAN lokal yang sama. 
+LShare adalah aplikasi multi-platform (Android, Windows, Linux) modern yang memungkinkan Anda melakukan transfer file (foto, video, dokumen) secara nirkabel antar perangkat yang terhubung ke jaringan WiFi/LAN lokal, serta menyinkronkan clipboard secara cloud via Supabase.
 
-Aplikasi ini berjalan **100% offline secara lokal** tanpa membutuhkan server cloud ataupun koneksi internet, menjadikannya sangat cepat, aman, dan menjaga privasi data Anda.
-
----
-
-## ✨ Fitur Utama
-
-- **Offline & Private**: Semua lalu lintas data berjalan di dalam jaringan lokal rumah Anda. Tidak ada data yang dikirim ke cloud.
-- **Auto-Discovery (mDNS)**: Perangkat saling mendeteksi secara otomatis tanpa perlu memasukkan IP address manual menggunakan multicast DNS (mDNS) broadcast.
-- **Transfer File Kecepatan Tinggi**: Kirim file ukuran kecil hingga besar (video 100MB+) dengan lancar menggunakan HTTP multipart POST stream.
-- **Penerimaan Konvergen (Dialog Konfirmasi)**: Menampilkan dialog overlay bottom sheet saat ada transfer masuk dengan hitungan mundur 30 detik. Penerima dapat memilih untuk Menerima atau Menolak.
-- **Sinkronisasi Clipboard Instan (WebSocket)**: Salin teks di satu perangkat, dan teks tersebut akan langsung tersedia di clipboard perangkat lain secara real-time via WebSocket.
-- **Riwayat Transfer & Persistensi**: Riwayat pengiriman/penerimaan tersimpan secara aman (maksimal 100 log teratas) dan file yang diterima dapat langsung dibuka menggunakan aplikasi eksternal (`open_filex`).
-- **Desain Premium Material 3**: Antarmuka modern yang estetik dengan warna biru primary, lengkap dengan status reaktif server lokal, WiFi status chip, dan transisi navigasi halaman yang mulus.
+Di versi **v1.1.3**, aplikasi ini membawa desain **Soft Neo-Brutalism** yang tegas dan modern, serta peningkatan privasi menggunakan fitur Teks Penting ber-PIN lokal.
 
 ---
 
-## 🛠️ Keputusan Teknis & Port Jaringan
+## ✨ Fitur Utama v1.1.3
 
-LShare beroperasi sebagai server lokal pada masing-masing perangkat:
-- **Port `8080` (HTTP Server)**: Digunakan untuk endpoint REST:
-  - `GET /ping` — Pengecekan status keaktifan perangkat.
-  - `GET /info` — Pengambilan informasi nama perangkat & platform OS.
-  - `POST /request` — Mengirimkan metadata permintaan transfer file untuk persetujuan.
-  - `POST /receive` — Pengunggahan data file mentah via multipart stream.
-- **Port `8081` (WebSocket)**: Digunakan untuk broadcasting teks clipboard secara dua arah dengan latensi rendah.
-- **mDNS Service Type `_lshare._tcp`**: Digunakan untuk broadcasting & scanning perangkat aktif.
+### 📁 Grup Transfer (Soft Neo-Brutalism UI)
+- **Transfer Batch Rapi**: Mengirim banyak file sekaligus tidak lagi membuat daftar file memanjang ke bawah. Semua pengiriman di batch yang sama dikelompokkan ke dalam satu "Bubble Grup" yang dapat di-klik (*expandable*).
+- **Desain Modern**: Menggunakan estetika *Soft Neo-Brutalism* dengan border tegas, warna solid (seperti *Acid Yellow* dan *Neo Black*), dan efek *hard shadow* yang interaktif.
+
+### 📋 Sinkronisasi Clipboard & Cloud (Supabase)
+- **Real-time Sync**: Teks yang disalin akan tersinkronisasi antar perangkat menggunakan Supabase Realtime WebSocket.
+- **Auto-Delete (Baru)**: Demi menghemat penyimpanan database, teks clipboard yang berumur lebih dari 7 hari otomatis dihapus saat aplikasi dijalankan.
+- **Fitur Kunci / Lock (Baru)**: Terdapat ikon gembok pada tiap teks di riwayat clipboard. Teks yang dikunci **tidak akan** ikut terhapus oleh sistem *Auto-Delete*.
+
+### 🔒 Teks Penting dengan PIN Lokal (Baru)
+- **Teks Penting**: Menu khusus untuk menyimpan teks rahasia/penting yang tersinkronisasi di perangkat Anda.
+- **Proteksi PIN Lokal**: Fitur ini dikunci dengan 4-digit PIN secara lokal. Jika perangkat Anda dipinjam, pengguna lain tidak bisa mengakses menu ini tanpa mengetahui PIN Anda.
+
+### 🌐 Dukungan Multi-Platform (Baru)
+- **Android**: Aplikasi sekarang di-build menggunakan format *split-per-abi*, memastikan ukuran APK instalasi jauh lebih kecil (~20MB) disesuaikan dengan arsitektur CPU masing-masing smartphone.
+- **Windows & Linux Desktop**: LShare kini mendukung kompilasi dan dapat dijalankan di Windows maupun Kali Linux (serta distro Linux lainnya).
 
 ---
 
-## ⚙️ Teknologi Stack
+## 🛠️ Keputusan Teknis & Arsitektur
 
-Aplikasi ini dibangun menggunakan library & framework terkini:
-- **Core**: Flutter (Dart) dengan standar **null safety**.
-- **State Management**: **Riverpod** (`flutter_riverpod`) untuk reaktivitas state.
-- **UI Design System**: **Material 3** dengan font Outfit.
-- **Networking**:
-  - `shelf` & `shelf_router` (HTTP Server)
-  - `shelf_web_socket` & `web_socket_channel` (WebSocket Clipboard Sync)
-  - `bonsoir` (mDNS Service Discovery)
-  - `dio` (HTTP Multipart File Upload Client)
-- **Persistensi**: `shared_preferences` untuk riwayat log transfer dan pengaturan konfigurasi perangkat.
-- **Utilitas**: `flutter_local_notifications` (Notifikasi unduhan selesai), `open_filex` (Membuka file), `permission_handler` (Manajemen perizinan Android).
+### Port Jaringan (Lokal)
+- **Port `8080` (HTTP Server)**: Digunakan untuk REST API pertukaran file mentah.
+  - `GET /ping` — Cek perangkat online.
+  - `POST /request` — Meminta persetujuan transfer file masuk.
+  - `POST /receive` — Pengunggahan multipart file mentah.
+- **mDNS `_lshare._tcp`**: Broadcaster dan scanner perangkat lokal.
+
+### Teknologi Stack
+- **Framework**: Flutter (Dart) dengan standar **null safety**.
+- **State Management**: **Riverpod** (`flutter_riverpod`).
+- **Networking**: `shelf` & `dio` (HTTP Transfer), `bonsoir` (mDNS).
+- **Database & Cloud**: Supabase (PostgreSQL & Realtime channel).
+- **Utilitas**: `shared_preferences` (PIN & setting), `flutter_local_notifications`.
 
 ---
 
@@ -51,40 +49,49 @@ Aplikasi ini dibangun menggunakan library & framework terkini:
 
 ### Prasyarat
 1. Flutter SDK terpasang di komputer Anda.
-2. Perangkat Android (min SDK 21 / Android 5.0) atau emulator Android.
-3. Hubungkan perangkat penguji ke **jaringan WiFi atau LAN yang sama**.
+2. Akun & Proyek Supabase.
+
+### ⚠️ Konfigurasi Supabase (Wajib)
+Jalankan script SQL berikut di menu SQL Editor pada dashboard Supabase Anda agar fitur Clipboard dan Teks Penting berfungsi:
+
+```sql
+-- 1. Kolom kunci untuk Clipboards
+ALTER TABLE public.clipboards ADD COLUMN IF NOT EXISTS is_locked boolean DEFAULT false;
+
+-- 2. Tabel Teks Penting
+CREATE TABLE IF NOT EXISTS public.important_texts (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at timestamp with time zone DEFAULT now(),
+  text text NOT NULL,
+  device_name text NOT NULL
+);
+
+-- 3. Aktifkan Realtime
+alter publication supabase_realtime add table public.important_texts;
+```
 
 ### Langkah Instalasi
-1. Clone repositori ini ke komputer lokal Anda:
+1. Clone repositori ini:
    ```bash
    git clone <repository-url>
-   ```
-2. Masuk ke direktori proyek:
-   ```bash
    cd lshare
    ```
-3. Unduh semua dependensi proyek:
+2. Unduh dependensi:
    ```bash
    flutter pub get
    ```
-4. Jalankan aplikasi pada perangkat Android Anda:
+3. Sesuaikan URL dan Anon Key Supabase Anda di `lib/core/constants/app_constants.dart`.
+4. Jalankan aplikasi:
    ```bash
    flutter run
    ```
 
 ---
 
-## 🧪 Pengujian & Analisis Kode
-
-Proyek ini telah dilengkapi dengan uji coba otomatis unit dan widget test untuk memastikan integritas logika bisnis aplikasi:
-- Untuk menjalankan tes unit/widget secara lokal:
-  ```bash
-  flutter test
-  ```
-- Untuk menganalisis kepatuhan standar penulisan kode:
-  ```bash
-  flutter analyze
-  ```
+## 📦 Build untuk Produksi
+- **Android**: `flutter build apk --split-per-abi`
+- **Windows**: `flutter build windows`
+- **Linux**: `flutter build linux` (Harus dijalankan di sistem operasi Linux)
 
 ---
 

@@ -133,6 +133,7 @@ class SendNotifier extends StateNotifier<SendState> {
 
     // Generate batch timestamp once to ensure IDs remain grouped/synchronized
     final batchTimestamp = DateTime.now().millisecondsSinceEpoch;
+    final groupId = 'group_$batchTimestamp'; // ID Grup untuk batch ini
 
     // Build initial pending transfer models for all selected files
     final initialTransfers = files.asMap().entries.map((entry) {
@@ -140,6 +141,7 @@ class SendNotifier extends StateNotifier<SendState> {
       final file = entry.value;
       return TransferModel(
         id: '${batchTimestamp}_${idx}_${file.name}',
+        groupId: groupId,
         fileName: file.name,
         fileSize: file.size,
         fromDevice: senderName,
@@ -167,6 +169,7 @@ class SendNotifier extends StateNotifier<SendState> {
       transferIds: transferIds,
       senderName: senderName,
       senderId: senderId,
+      groupId: groupId,
       onProgress: (index, progress) {
         if (index < state.transfers.length) {
           final updatedTransfers = List<TransferModel>.from(state.transfers);

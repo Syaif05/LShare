@@ -76,9 +76,11 @@ class ServerService {
 
           if (requestData['isBatch'] == true) {
             final filesData = requestData['files'] as List<dynamic>;
+            final groupId = requestData['groupId'] as String? ?? 'batch_${DateTime.now().millisecondsSinceEpoch}';
             for (var fileData in filesData) {
               transfers.add(TransferModel(
                 id: fileData['id'] as String,
+                groupId: groupId,
                 fileName: fileData['fileName'] as String,
                 fileSize: fileData['fileSize'] as int,
                 fromDevice: fromDevice,
@@ -100,6 +102,7 @@ class ServerService {
 
             transfers.add(TransferModel(
               id: transferId,
+              groupId: transferId, // Default to id for legacy
               fileName: fileName,
               fileSize: fileSize,
               fromDevice: fromDevice,

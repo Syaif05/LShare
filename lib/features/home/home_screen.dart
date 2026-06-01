@@ -193,12 +193,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final deviceName = ref.watch(deviceNameProvider);
     final isServerRunning = ref.watch(serverRunningProvider);
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.all(16),
-      elevation: 0,
-      color: AppColors.primaryContainer,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+      decoration: BoxDecoration(
+        color: AppColors.acidYellow,
+        border: Border.all(color: AppColors.neoBlack, width: 2),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(4, 4))],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),

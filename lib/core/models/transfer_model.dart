@@ -4,6 +4,7 @@ enum TransferStatus { pending, transferring, done, failed, rejected }
 
 class TransferModel {
   final String id;
+  final String groupId; // Ditambahkan untuk v1.1.2
   final String fileName;
   final int fileSize;
   final String fromDevice;
@@ -18,6 +19,7 @@ class TransferModel {
 
   const TransferModel({
     required this.id,
+    required this.groupId,
     required this.fileName,
     required this.fileSize,
     required this.fromDevice,
@@ -34,6 +36,7 @@ class TransferModel {
   factory TransferModel.fromJson(Map<String, dynamic> json) {
     return TransferModel(
       id: json['id'] as String,
+      groupId: json['groupId'] as String? ?? json['id'] as String, // Default to id if old version
       fileName: json['fileName'] as String,
       fileSize: json['fileSize'] as int,
       fromDevice: json['fromDevice'] as String,
@@ -54,6 +57,7 @@ class TransferModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'groupId': groupId,
       'fileName': fileName,
       'fileSize': fileSize,
       'fromDevice': fromDevice,
@@ -70,6 +74,7 @@ class TransferModel {
 
   TransferModel copyWith({
     String? id,
+    String? groupId,
     String? fileName,
     int? fileSize,
     String? fromDevice,
@@ -84,6 +89,7 @@ class TransferModel {
   }) {
     return TransferModel(
       id: id ?? this.id,
+      groupId: groupId ?? this.groupId,
       fileName: fileName ?? this.fileName,
       fileSize: fileSize ?? this.fileSize,
       fromDevice: fromDevice ?? this.fromDevice,

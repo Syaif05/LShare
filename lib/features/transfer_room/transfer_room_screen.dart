@@ -96,88 +96,6 @@ class _TransferRoomScreenState extends ConsumerState<TransferRoomScreen> {
     }
   }
 
-  IconData _getFileIcon(String fileName) {
-    final ext = fileName.split('.').last.toLowerCase();
-    switch (ext) {
-      case 'pdf':
-        return Icons.picture_as_pdf_rounded;
-      case 'doc':
-      case 'docx':
-        return Icons.description_rounded;
-      case 'xls':
-      case 'xlsx':
-        return Icons.table_chart_rounded;
-      case 'png':
-      case 'jpg':
-      case 'jpeg':
-      case 'gif':
-        return Icons.image_rounded;
-      case 'mp4':
-      case 'avi':
-      case 'mov':
-      case 'mkv':
-        return Icons.video_library_rounded;
-      case 'mp3':
-      case 'wav':
-      case 'flac':
-        return Icons.music_note_rounded;
-      case 'zip':
-      case 'rar':
-      case 'tar':
-      case 'gz':
-        return Icons.archive_rounded;
-      default:
-        return Icons.insert_drive_file_rounded;
-    }
-  }
-
-  void _openFile(BuildContext context, TransferModel item) async {
-    final localPath = item.localPath;
-    if (localPath == null) return;
-
-    final file = File(localPath);
-    final messenger = ScaffoldMessenger.of(context);
-    
-    final fileExists = await file.exists();
-    if (!fileExists) {
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('File tidak ditemukan di penyimpanan lokal'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
-    try {
-      await OpenFilex.open(localPath);
-    } catch (e) {
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Gagal membuka file: ${e.toString()}'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  void _openFolder(BuildContext context, TransferModel item) async {
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      await FileUtils.openDownloadsFolder();
-    } catch (e) {
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Gagal membuka folder: ${e.toString()}'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
   Future<void> _pickAndSendFiles() async {
     final notifier = ref.read(sendProvider.notifier);
     notifier.setTargetDevice(widget.device);
@@ -201,6 +119,18 @@ class _TransferRoomScreenState extends ConsumerState<TransferRoomScreen> {
     final sendState = ref.watch(sendProvider);
     final isSendingActive = sendState.currentSendingIndex != -1;
 
+    // Grouping transfers by groupId
+    final Map<String, List<TransferModel>> groupsMap = {};
+    for (var t in transfers) {
+      if (!groupsMap.containsKey(t.groupId)) {
+        groupsMap[t.groupId] = [];
+      }
+      groupsMap[t.groupId]!.add(t);
+    }
+
+    final groupList = groupsMap.values.toList();
+    groupList.sort((a, b) => a.first.timestamp.compareTo(b.first.timestamp));
+
     // Trigger scroll to bottom on list updates
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (transfers.isNotEmpty) {
@@ -209,10 +139,11 @@ class _TransferRoomScreenState extends ConsumerState<TransferRoomScreen> {
     });
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.paperWhite,
       appBar: AppBar(
         titleSpacing: 0,
         surfaceTintColor: Colors.transparent,
+        backgroundColor: AppColors.paperWhite,
         title: Row(
           children: [
             DeviceAvatar(platform: widget.device.platform, size: 36),
@@ -225,7 +156,8 @@ class _TransferRoomScreenState extends ConsumerState<TransferRoomScreen> {
                     widget.device.name,
                     style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.neoBlack,
                     ),
                   ),
                   Row(
@@ -235,7 +167,7 @@ class _TransferRoomScreenState extends ConsumerState<TransferRoomScreen> {
                         height: 6,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isOnline ? Colors.green : Colors.grey,
+                          color: isOnline ? AppColors.neoGreen : AppColors.error,
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -243,7 +175,8 @@ class _TransferRoomScreenState extends ConsumerState<TransferRoomScreen> {
                         '${isOnline ? "Tersambung" : "Offline"} • ${widget.device.ip}',
                         style: const TextStyle(
                           fontSize: 11,
-                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
                       ),
                     ],
@@ -258,15 +191,15 @@ class _TransferRoomScreenState extends ConsumerState<TransferRoomScreen> {
         children: [
           // Transfer Messages List
           Expanded(
-            child: transfers.isEmpty
+            child: groupList.isEmpty
                 ? _buildEmptyState()
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(16),
-                    itemCount: transfers.length,
+                    itemCount: groupList.length,
                     itemBuilder: (context, index) {
-                      final item = transfers[index];
-                      return _buildTransferBubble(item);
+                      final group = groupList[index];
+                      return TransferGroupBubble(group: group);
                     },
                   ),
           ),
@@ -280,13 +213,10 @@ class _TransferRoomScreenState extends ConsumerState<TransferRoomScreen> {
               bottom: MediaQuery.of(context).padding.bottom + 16,
             ),
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
+              color: AppColors.paperWhite,
+              border: const Border(top: BorderSide(color: AppColors.neoBlack, width: 2)),
+              boxShadow: const [
+                BoxShadow(color: AppColors.neoBlack, offset: Offset(0, -2)),
               ],
             ),
             child: Row(
@@ -300,27 +230,26 @@ class _TransferRoomScreenState extends ConsumerState<TransferRoomScreen> {
                             height: 18,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.neoBlack),
                             ),
                           )
-                        : const Icon(Icons.cloud_upload_rounded),
+                        : const Icon(Icons.add_rounded, color: AppColors.neoBlack, size: 24),
                     label: Text(
                       !isOnline
                           ? 'Perangkat Offline'
                           : isSendingActive
                               ? 'Mengirim file (${sendState.currentSendingIndex + 1}/${sendState.selectedFiles.length})...'
-                              : 'Pilih & Kirim File',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              : 'Kirim File / Dokumen',
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.neoBlack),
                     ),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.textDisabled.withValues(alpha: 0.2),
-                      disabledForegroundColor: AppColors.textDisabled,
+                      backgroundColor: AppColors.acidYellow,
+                      disabledBackgroundColor: AppColors.acidYellow.withValues(alpha: 0.5),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: AppColors.neoBlack, width: 2),
                       ),
                     ),
                   ),
@@ -343,13 +272,15 @@ class _TransferRoomScreenState extends ConsumerState<TransferRoomScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primaryContainer.withValues(alpha: 0.5),
+                color: AppColors.acidYellow,
+                border: Border.all(color: AppColors.neoBlack, width: 2),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(4, 4))],
               ),
               child: const Icon(
                 Icons.swap_horizontal_circle_outlined,
                 size: 64,
-                color: AppColors.primary,
+                color: AppColors.neoBlack,
               ),
             ),
             const SizedBox(height: 24),
@@ -357,17 +288,18 @@ class _TransferRoomScreenState extends ConsumerState<TransferRoomScreen> {
               'Ruang Transfer Baru',
               style: TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w900,
+                color: AppColors.neoBlack,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Saling kirim file secara langsung dengan ${widget.device.name}. Klik tombol di bawah untuk memilih file.',
+              'Saling kirim file secara langsung dengan ${widget.device.name}. Klik tombol di bawah untuk mulai.',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 13,
-                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
               ),
             ),
           ],
@@ -375,218 +307,283 @@ class _TransferRoomScreenState extends ConsumerState<TransferRoomScreen> {
       ),
     );
   }
+}
 
-  Widget _buildTransferBubble(TransferModel item) {
-    final isMe = item.isSent;
-    final alignment = isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
-    final bubbleColor = isMe ? AppColors.primaryContainer : AppColors.surface;
-    final borderSide = isMe
-        ? BorderSide(color: AppColors.primary.withValues(alpha: 0.2))
-        : BorderSide(color: AppColors.outline.withValues(alpha: 0.15));
+class TransferGroupBubble extends StatefulWidget {
+  final List<TransferModel> group;
+  const TransferGroupBubble({super.key, required this.group});
 
-    final timeStr = DateFormat('HH:mm').format(item.timestamp);
-    final isCompleted = item.status == TransferStatus.done;
-    final isFailedOrRejected = item.status == TransferStatus.failed || item.status == TransferStatus.rejected;
-    final isProgressActive = item.status == TransferStatus.transferring || item.status == TransferStatus.pending;
+  @override
+  State<TransferGroupBubble> createState() => _TransferGroupBubbleState();
+}
 
-    // Icon status based on transfer
-    IconData statusIcon = Icons.check_circle_rounded;
-    Color statusColor = AppColors.success;
-    String statusText = isMe ? 'Terkirim' : 'Diterima';
+class _TransferGroupBubbleState extends State<TransferGroupBubble> {
+  bool _isExpanded = false;
 
-    if (item.status == TransferStatus.failed) {
-      statusIcon = Icons.error_rounded;
-      statusColor = AppColors.error;
-      statusText = 'Gagal';
-    } else if (item.status == TransferStatus.rejected) {
-      statusIcon = Icons.block_rounded;
-      statusColor = AppColors.error;
-      statusText = 'Ditolak';
-    } else if (item.status == TransferStatus.transferring) {
-      statusIcon = Icons.swap_horizontal_circle_rounded;
-      statusColor = AppColors.primary;
-      statusText = isMe ? 'Mengirim...' : 'Menerima...';
-    } else if (item.status == TransferStatus.pending) {
-      statusIcon = Icons.hourglass_empty_rounded;
-      statusColor = AppColors.warning;
-      statusText = 'Menunggu...';
+  IconData _getFileIcon(String fileName) {
+    final ext = fileName.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'pdf': return Icons.picture_as_pdf_rounded;
+      case 'doc': case 'docx': return Icons.description_rounded;
+      case 'xls': case 'xlsx': return Icons.table_chart_rounded;
+      case 'png': case 'jpg': case 'jpeg': case 'gif': return Icons.image_rounded;
+      case 'mp4': case 'avi': case 'mov': case 'mkv': return Icons.video_library_rounded;
+      case 'mp3': case 'wav': case 'flac': return Icons.music_note_rounded;
+      case 'zip': case 'rar': case 'tar': case 'gz': return Icons.archive_rounded;
+      default: return Icons.insert_drive_file_rounded;
     }
+  }
+
+  void _openFile(BuildContext context, TransferModel item) async {
+    final localPath = item.localPath;
+    if (localPath == null) return;
+
+    final file = File(localPath);
+    final fileExists = await file.exists();
+    if (!fileExists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('File tidak ditemukan di penyimpanan lokal')),
+      );
+      return;
+    }
+    try {
+      await OpenFilex.open(localPath);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal membuka file: ${e.toString()}')),
+      );
+    }
+  }
+
+  void _openFolder(BuildContext context) async {
+    try {
+      await FileUtils.openDownloadsFolder();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal membuka folder: ${e.toString()}')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.group.isEmpty) return const SizedBox.shrink();
+
+    final isMe = widget.group.first.isSent;
+    final alignment = isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+    final bubbleColor = isMe ? AppColors.acidYellow : Colors.white;
+
+    // Aggregate status
+    int totalFiles = widget.group.length;
+    int completed = widget.group.where((t) => t.status == TransferStatus.done).length;
+    int failed = widget.group.where((t) => t.status == TransferStatus.failed || t.status == TransferStatus.rejected).length;
+    
+    bool isTransferring = widget.group.any((t) => t.status == TransferStatus.transferring || t.status == TransferStatus.pending);
+    bool isFailed = failed > 0 && failed == totalFiles;
+    
+    String groupStatusText = isTransferring 
+        ? (isMe ? 'Mengirim ($completed/$totalFiles)...' : 'Menerima ($completed/$totalFiles)...')
+        : (isFailed ? 'Gagal' : 'Selesai ($completed/$totalFiles)');
+        
+    Color statusColor = isTransferring ? AppColors.primary : (isFailed ? AppColors.error : AppColors.neoGreen);
+
+    // Hitung total size dan progress
+    int totalSize = 0;
+    double totalProgress = 0;
+    for (var t in widget.group) {
+      totalSize += t.fileSize;
+      totalProgress += t.progress;
+    }
+    double averageProgress = totalProgress / totalFiles;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       width: double.infinity,
       child: Column(
         crossAxisAlignment: alignment,
         children: [
-          // Bubble Card
           Container(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.75,
-            ),
+            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
             decoration: BoxDecoration(
               color: bubbleColor,
+              border: Border.all(color: AppColors.neoBlack, width: 2),
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(16),
                 topRight: const Radius.circular(16),
-                bottomLeft: Radius.circular(isMe ? 16 : 4),
-                bottomRight: Radius.circular(isMe ? 4 : 16),
+                bottomLeft: Radius.circular(isMe ? 16 : 0),
+                bottomRight: Radius.circular(isMe ? 0 : 16),
               ),
-              border: Border.fromBorderSide(borderSide),
+              boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(3, 3))],
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // File Info Header Row
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: isMe
-                            ? AppColors.primary.withValues(alpha: 0.15)
-                            : AppColors.surfaceVariant,
-                        child: Icon(
-                          _getFileIcon(item.fileName),
-                          color: isMe ? AppColors.primary : AppColors.textSecondary,
-                          size: 20,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header (Group Info)
+                InkWell(
+                  onTap: () => setState(() => _isExpanded = !_isExpanded),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(14), bottom: Radius.circular(14)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.neoBlack,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.folder_zip_rounded, color: AppColors.paperWhite, size: 24),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.fileName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                totalFiles == 1 ? widget.group.first.fileName : '$totalFiles File',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.neoBlack),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              FileUtils.formatFileSize(item.fileSize),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary,
+                              const SizedBox(height: 2),
+                              Text(
+                                FileUtils.formatFileSize(totalSize),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                        if (totalFiles > 1) ...[
+                          const SizedBox(width: 8),
+                          Icon(_isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, color: AppColors.neoBlack),
+                        ]
+                      ],
+                    ),
                   ),
+                ),
 
-                  // Progress bar if active
-                  if (isProgressActive) ...[
-                    const SizedBox(height: 12),
-                    Row(
+                if (isTransferring) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
+                    child: Row(
                       children: [
                         Expanded(
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
-                              value: item.progress,
-                              minHeight: 5,
-                              backgroundColor: isMe
-                                  ? AppColors.primary.withValues(alpha: 0.1)
-                                  : AppColors.surfaceVariant,
-                              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                              value: averageProgress,
+                              minHeight: 6,
+                              backgroundColor: Colors.black12,
+                              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.neoBlack),
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          '${(item.progress * 100).toInt()}%',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
+                          '${(averageProgress * 100).toInt()}%',
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.neoBlack),
                         ),
                       ],
                     ),
-                  ],
-
-                  // Action buttons if completed
-                  if (isCompleted && item.localPath != null) ...[
-                    const Divider(height: 20, thickness: 0.8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: () => _openFile(context, item),
-                          icon: const Icon(Icons.file_open_rounded, size: 12),
-                          label: const Text('Buka', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
-                            foregroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        OutlinedButton.icon(
-                          onPressed: () => _openFolder(context, item),
-                          icon: const Icon(Icons.folder_open_rounded, size: 12),
-                          label: const Text('Folder', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            side: BorderSide(color: AppColors.textSecondary.withValues(alpha: 0.4)),
-                            foregroundColor: AppColors.textSecondary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ],
-              ),
+
+                // Action Footer
+                if (!isTransferring && totalFiles == 1 && widget.group.first.localPath != null) ...[
+                  const Divider(height: 1, thickness: 2, color: AppColors.neoBlack),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => _openFile(context, widget.group.first),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: Center(child: Text('Buka', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12))),
+                          ),
+                        ),
+                      ),
+                      Container(width: 2, height: 24, color: AppColors.neoBlack),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => _openFolder(context),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: Center(child: Text('Folder', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12))),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else if (!isTransferring && totalFiles > 1) ...[
+                  const Divider(height: 1, thickness: 2, color: AppColors.neoBlack),
+                  InkWell(
+                    onTap: () => _openFolder(context),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Center(child: Text('Buka Folder Penyimpanan', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12))),
+                    ),
+                  ),
+                ],
+
+                // Expanded List
+                if (_isExpanded && totalFiles > 1) ...[
+                  const Divider(height: 1, thickness: 2, color: AppColors.neoBlack),
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: AppColors.paperWhite,
+                      borderRadius: BorderRadius.only(bottomLeft: Radius.circular(14), bottomRight: Radius.circular(14)),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      children: widget.group.map((item) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          child: Row(
+                            children: [
+                              Icon(_getFileIcon(item.fileName), size: 16, color: AppColors.neoBlack),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(item.fileName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                              ),
+                              if (item.status == TransferStatus.transferring) ...[
+                                const SizedBox(width: 8),
+                                const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.neoBlack)),
+                              ] else if (item.status == TransferStatus.done) ...[
+                                const SizedBox(width: 8),
+                                const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.neoGreen),
+                              ] else if (item.status == TransferStatus.failed || item.status == TransferStatus.rejected) ...[
+                                const SizedBox(width: 8),
+                                const Icon(Icons.cancel_rounded, size: 14, color: AppColors.error),
+                              ]
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          const SizedBox(height: 4),
-
-          // Bubble Footer (Status + Time)
+          
+          // Timestamp & Status indicator
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (isProgressActive || isFailedOrRejected) ...[
-                  Icon(statusIcon, size: 12, color: statusColor),
-                  const SizedBox(width: 4),
-                  Text(
-                    statusText,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: statusColor,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(width: 3, height: 3, decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.textDisabled)),
-                  const SizedBox(width: 6),
-                ],
                 Text(
-                  timeStr,
-                  style: const TextStyle(
-                    fontSize: 9,
-                    color: AppColors.textSecondary,
-                  ),
+                  groupStatusText,
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: statusColor),
+                ),
+                const SizedBox(width: 6),
+                Container(width: 4, height: 4, decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.neoBlack)),
+                const SizedBox(width: 6),
+                Text(
+                  DateFormat('HH:mm').format(widget.group.first.timestamp),
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
                 ),
               ],
             ),

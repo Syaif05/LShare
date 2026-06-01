@@ -18,11 +18,12 @@ import 'core/services/clipboard_service.dart';
 import 'core/models/transfer_model.dart';
 import 'features/receive/receive_provider.dart';
 import 'features/receive/receive_screen.dart';
-import 'core/constants/app_constants.dart';
 import 'core/services/discovery_service.dart';
 import 'features/devices/devices_provider.dart';
 import 'features/settings/settings_provider.dart';
 import 'features/send/send_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'features/important_text/important_text_provider.dart';
 
 class LShareApp extends StatelessWidget {
   const LShareApp({super.key});
@@ -81,6 +82,10 @@ class _MainShellState extends ConsumerState<MainShell> {
             });
           }
         }
+      });
+      // Initialize Important Text PIN
+      SharedPreferences.getInstance().then((prefs) {
+        initImportantTextPin(ref, prefs);
       });
     });
   }

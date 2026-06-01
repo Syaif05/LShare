@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/models/transfer_model.dart';
 import '../../core/utils/file_utils.dart';
+import '../../shared/widgets/neo_button.dart';
 import 'receive_provider.dart';
 import '../transfer_room/transfer_room_screen.dart';
 import '../../core/models/device_model.dart';
@@ -98,8 +99,9 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
       decoration: const BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.paperWhite,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(top: BorderSide(color: AppColors.neoBlack, width: 2)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -107,22 +109,27 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
         children: [
           // Drag handle
           Container(
-            width: 40,
-            height: 4,
+            width: 48,
+            height: 6,
             decoration: BoxDecoration(
-              color: AppColors.divider,
-              borderRadius: BorderRadius.circular(2),
+              color: AppColors.neoBlack,
+              borderRadius: BorderRadius.circular(3),
             ),
           ),
           const SizedBox(height: 24),
           
           // Icon and Header
-          const CircleAvatar(
-            radius: 32,
-            backgroundColor: AppColors.primaryContainer,
-            child: Icon(
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.neoBlue,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.neoBlack, width: 2),
+              boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(2, 2))],
+            ),
+            child: const Icon(
               Icons.download_rounded,
-              color: AppColors.primary,
+              color: AppColors.paperWhite,
               size: 36,
             ),
           ),
@@ -130,9 +137,9 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
           const Text(
             AppStrings.receiveTitle,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: AppColors.neoBlack,
             ),
           ),
           const SizedBox(height: 8),
@@ -144,30 +151,38 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
             style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 14,
+              fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           // File Info Container
           Container(
             constraints: BoxConstraints(
-              maxHeight: isSingle ? 100 : 160,
+              maxHeight: isSingle ? 100 : 180,
             ),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: AppColors.surfaceVariant,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.outline.withValues(alpha: 0.2),
-              ),
+              border: Border.all(color: AppColors.neoBlack, width: 2),
+              boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(4, 4))],
             ),
             child: isSingle
                 ? Row(
                     children: [
-                      Icon(
-                        _getFileIcon(firstTransfer.fileName),
-                        color: AppColors.textSecondary,
-                        size: 32,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.paperWhite,
+                          border: Border.all(color: AppColors.neoBlack, width: 1.5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          _getFileIcon(firstTransfer.fileName),
+                          color: AppColors.neoBlack,
+                          size: 32,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -180,8 +195,9 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w900,
                                 fontSize: 15,
+                                color: AppColors.neoBlack,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -189,7 +205,8 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
                               FileUtils.formatFileSize(firstTransfer.fileSize),
                               style: const TextStyle(
                                 color: AppColors.textSecondary,
-                                fontSize: 12,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
@@ -208,23 +225,23 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
                             Text(
                               'Total: ${widget.transfers.length} file',
                               style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w900,
                                 fontSize: 13,
-                                color: AppColors.textPrimary,
+                                color: AppColors.neoBlack,
                               ),
                             ),
                             Text(
                               FileUtils.formatFileSize(totalSize),
                               style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w900,
                                 fontSize: 13,
-                                color: AppColors.primary,
+                                color: AppColors.neoBlue,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const Divider(height: 8),
+                      const Divider(height: 8, color: AppColors.neoBlack, thickness: 1.5),
                       Expanded(
                         child: ListView.builder(
                           shrinkWrap: true,
@@ -232,12 +249,12 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
                           itemBuilder: (context, index) {
                             final file = widget.transfers[index];
                             return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
+                              padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
                               child: Row(
                                 children: [
                                   Icon(
                                     _getFileIcon(file.fileName),
-                                    color: AppColors.textSecondary,
+                                    color: AppColors.neoBlack,
                                     size: 18,
                                   ),
                                   const SizedBox(width: 8),
@@ -246,7 +263,7 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
                                       file.fileName,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 12),
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.neoBlack),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
@@ -255,6 +272,7 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
                                     style: const TextStyle(
                                       fontSize: 11,
                                       color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ],
@@ -266,7 +284,7 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
                     ],
                   ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           // Countdown
           Row(
@@ -274,7 +292,7 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
             children: [
               const Icon(
                 Icons.timer_outlined,
-                size: 16,
+                size: 18,
                 color: AppColors.warning,
               ),
               const SizedBox(width: 8),
@@ -282,8 +300,8 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
                 '${AppStrings.receiveAutoReject} $_secondsLeft detik',
                 style: const TextStyle(
                   color: AppColors.warning,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14,
                 ),
               ),
             ],
@@ -294,30 +312,24 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: NeoButton(
                   onPressed: () {
                     ref.read(receiveProvider.notifier).rejectRequestBatch();
                     Navigator.of(context).pop();
                   },
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: const BorderSide(color: AppColors.error),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
+                  backgroundColor: AppColors.error,
                   child: const Text(
                     AppStrings.receiveReject,
                     style: TextStyle(
-                      color: AppColors.error,
-                      fontWeight: FontWeight.bold,
+                      color: AppColors.paperWhite,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: ElevatedButton(
+                child: NeoButton(
                   onPressed: () {
                     final senderDevice = ref.read(devicesProvider).firstWhere(
                       (d) => d.ip == firstTransfer.senderIp,
@@ -340,18 +352,12 @@ class _ReceiveBottomSheetState extends ConsumerState<ReceiveBottomSheet> {
                       ),
                     );
                   },
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: AppColors.success,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
+                  backgroundColor: AppColors.success,
                   child: const Text(
                     AppStrings.receiveAccept,
                     style: TextStyle(
-                      fontWeight: FontWeight.bold,
+                      color: AppColors.paperWhite,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),

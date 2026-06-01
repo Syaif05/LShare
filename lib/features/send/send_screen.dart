@@ -141,9 +141,9 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     final canSend = files.isNotEmpty && target != null && !isSending;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.paperWhite,
       appBar: AppBar(
-        title: const Text(AppStrings.sendTitle),
+        title: const Text(AppStrings.sendTitle, style: TextStyle(fontWeight: FontWeight.w900)),
         surfaceTintColor: Colors.transparent,
       ),
       body: Padding(
@@ -159,25 +159,28 @@ class _SendScreenState extends ConsumerState<SendScreen> {
                     const Text(
                       'Tujuan Pengiriman',
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textSecondary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.neoBlack,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     if (target != null)
-                      Card(
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
                           borderRadius: BorderRadius.circular(16),
-                          side: BorderSide(color: AppColors.outline.withValues(alpha: 0.3)),
+                          border: Border.all(color: AppColors.neoBlack, width: 2),
+                          boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(4, 4))],
                         ),
-                        color: AppColors.surface,
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Row(
                             children: [
-                              DeviceAvatar(platform: target.platform, size: 40),
+                              Hero(
+                                tag: 'device_avatar_${target.id}',
+                                child: DeviceAvatar(platform: target.platform, size: 48),
+                              ),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Column(
@@ -186,12 +189,12 @@ class _SendScreenState extends ConsumerState<SendScreen> {
                                     Text(
                                       target.name,
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.bold, fontSize: 15),
+                                          fontWeight: FontWeight.w900, fontSize: 18, color: AppColors.neoBlack),
                                     ),
                                     Text(
                                       target.ip,
                                       style: const TextStyle(
-                                          color: AppColors.textSecondary, fontSize: 12),
+                                          color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
@@ -199,7 +202,10 @@ class _SendScreenState extends ConsumerState<SendScreen> {
                               if (!isSending && !isCompleted)
                                 TextButton(
                                   onPressed: () => _showDeviceSelectorDialog(context, ref),
-                                  child: const Text('Ubah'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.primary,
+                                  ),
+                                  child: const Text('Ubah', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.neoBlue)),
                                 ),
                             ],
                           ),
@@ -212,48 +218,54 @@ class _SendScreenState extends ConsumerState<SendScreen> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
+                            color: AppColors.paperWhite,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: AppColors.outline.withValues(alpha: 0.5),
-                            ),
+                            border: Border.all(color: AppColors.neoBlack, width: 2),
+                            boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(4, 4))],
                           ),
-                          child: const Row(
+                          child: Row(
                             children: [
-                              Icon(Icons.devices_rounded, color: AppColors.primary),
-                              SizedBox(width: 16),
-                              Expanded(
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.acidYellow,
+                                  border: Border.all(color: AppColors.neoBlack, width: 1.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.devices_rounded, color: AppColors.neoBlack),
+                              ),
+                              const SizedBox(width: 16),
+                              const Expanded(
                                 child: Text(
                                   'Pilih Device Tujuan',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.neoBlack),
                                 ),
                               ),
-                              Icon(Icons.arrow_forward_ios_rounded,
-                                  size: 16, color: AppColors.textSecondary),
+                              const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.neoBlack),
                             ],
                           ),
                         ),
                       ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
 
                     // File Selector / List
                     const Text(
                       'File yang Dikirim',
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textSecondary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.neoBlack,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     if (files.isNotEmpty) ...[
-                      Card(
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.paperWhite,
                           borderRadius: BorderRadius.circular(16),
-                          side: BorderSide(color: AppColors.outline.withValues(alpha: 0.3)),
+                          border: Border.all(color: AppColors.neoBlack, width: 2),
+                          boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(4, 4))],
                         ),
-                        color: AppColors.surface,
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Column(
@@ -266,45 +278,49 @@ class _SendScreenState extends ConsumerState<SendScreen> {
                                   final file = files[index];
                                   final fileExt = file.name.contains('.') ? file.name.split('.').last : null;
                                   return ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    leading: CircleAvatar(
-                                      backgroundColor: AppColors.primaryContainer,
-                                      child: Icon(
-                                        _getFileIcon(fileExt),
-                                        color: AppColors.primary,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surfaceVariant,
+                                        border: Border.all(color: AppColors.neoBlack, width: 1.5),
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
+                                      child: Icon(_getFileIcon(fileExt), color: AppColors.neoBlack, size: 24),
                                     ),
                                     title: Text(
                                       file.name,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold, fontSize: 14),
+                                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.neoBlack),
                                     ),
                                     subtitle: Text(
                                       FileUtils.formatFileSize(file.size),
-                                      style: const TextStyle(
-                                          color: AppColors.textSecondary, fontSize: 11),
+                                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
                                     ),
                                     trailing: (!isSending && !isCompleted)
                                         ? IconButton(
-                                            icon: const Icon(Icons.close_rounded,
-                                                color: AppColors.error),
-                                            onPressed: () =>
-                                                ref.read(sendProvider.notifier).removeFile(index),
+                                            icon: const Icon(Icons.close_rounded, color: AppColors.error),
+                                            onPressed: () => ref.read(sendProvider.notifier).removeFile(index),
                                           )
                                         : null,
                                   );
                                 },
                               ),
                               if (!isSending && !isCompleted) ...[
-                                const Divider(),
-                                TextButton.icon(
-                                  onPressed: state.isLoadingFile
-                                      ? null
-                                      : () => ref.read(sendProvider.notifier).pickFiles(),
-                                  icon: const Icon(Icons.add_rounded),
-                                  label: const Text('Tambah File Lagi'),
+                                const Divider(color: AppColors.neoBlack, thickness: 1.5),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: TextButton.icon(
+                                    onPressed: state.isLoadingFile
+                                        ? null
+                                        : () => ref.read(sendProvider.notifier).pickFiles(),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.neoBlack,
+                                    ),
+                                    icon: const Icon(Icons.add_rounded, color: AppColors.neoBlack),
+                                    label: const Text('Tambah File Lagi', style: TextStyle(fontWeight: FontWeight.w900)),
+                                  ),
                                 ),
                               ],
                             ],
@@ -313,70 +329,68 @@ class _SendScreenState extends ConsumerState<SendScreen> {
                       ),
                     ] else
                       GestureDetector(
-                        onTap: state.isLoadingFile
-                            ? null
-                            : () => ref.read(sendProvider.notifier).pickFiles(),
+                        onTap: state.isLoadingFile ? null : () => ref.read(sendProvider.notifier).pickFiles(),
                         child: Container(
                           width: double.infinity,
-                          height: 160,
+                          height: 180,
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
+                            color: AppColors.paperWhite,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: AppColors.outline.withValues(alpha: 0.5),
-                              width: 1.5,
-                            ),
+                            border: Border.all(color: AppColors.neoBlack, width: 2),
+                            boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(4, 4))],
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               if (state.isLoadingFile)
-                                const CircularProgressIndicator()
+                                const CircularProgressIndicator(color: AppColors.neoBlue)
                               else ...[
-                                const Icon(
-                                  Icons.cloud_upload_outlined,
-                                  size: 48,
-                                  color: AppColors.primary,
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.acidYellow,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: AppColors.neoBlack, width: 2),
+                                  ),
+                                  child: const Icon(Icons.cloud_upload_outlined, size: 40, color: AppColors.neoBlack),
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 16),
                                 const Text(
                                   AppStrings.sendSelectFile,
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold, fontSize: 16),
+                                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppColors.neoBlack),
                                 ),
                                 const SizedBox(height: 4),
                                 const Text(
                                   'Bisa pilih satu atau banyak file sekaligus',
-                                  style: TextStyle(
-                                      color: AppColors.textSecondary, fontSize: 12),
+                                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ],
                           ),
                         ),
                       ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
 
                     // Progress / Status for Multiple Files
                     if (transfers.isNotEmpty) ...[
                       const Text(
                         'Status Pengiriman',
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textSecondary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.neoBlack,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Card(
-                        elevation: 0,
-                        color: AppColors.surface,
-                        shape: RoundedRectangleBorder(
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.paperWhite,
                           borderRadius: BorderRadius.circular(16),
-                          side: BorderSide(color: AppColors.outline.withValues(alpha: 0.3)),
+                          border: Border.all(color: AppColors.neoBlack, width: 2),
+                          boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(4, 4))],
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                           child: Column(
                             children: transfers.asMap().entries.map((entry) {
                               final idx = entry.key;
@@ -397,67 +411,79 @@ class _SendScreenState extends ConsumerState<SendScreen> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 16, top: 8),
                 child: Center(
-                  child: Text(
-                    state.errorMessage!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
                       color: AppColors.error,
-                      fontWeight: FontWeight.w500,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.neoBlack, width: 1.5),
+                    ),
+                    child: Text(
+                      state.errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.paperWhite,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),
               ),
 
             // Action Button
-            if (isCompleted)
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                icon: const Icon(Icons.arrow_back_rounded),
-                label: const Text('Kembali ke Beranda'),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(56),
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: isCompleted
+                ? ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.arrow_back_rounded, color: AppColors.paperWhite),
+                    label: const Text('Kembali ke Beranda', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(60),
+                      backgroundColor: AppColors.neoBlack,
+                      foregroundColor: AppColors.paperWhite,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: AppColors.neoBlack, width: 2),
+                      ),
+                      elevation: 4,
+                    ),
+                  )
+                : ElevatedButton(
+                    onPressed: canSend ? () => ref.read(sendProvider.notifier).startSend() : null,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(60),
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.paperWhite,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: AppColors.neoBlack, width: 2),
+                      ),
+                      disabledBackgroundColor: AppColors.surfaceVariant,
+                      disabledForegroundColor: AppColors.textSecondary,
+                      elevation: canSend ? 4 : 0,
+                    ),
+                    child: isSending
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.paperWhite),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text('Mengirim (${state.currentSendingIndex + 1}/${files.length})...', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                            ],
+                          )
+                        : const Text(AppStrings.sendButton, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                   ),
-                ),
-              )
-            else
-              ElevatedButton(
-                onPressed: canSend
-                    ? () => ref.read(sendProvider.notifier).startSend()
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(56),
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.3),
-                  disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
-                ),
-                child: isSending
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text('Mengirim (${state.currentSendingIndex + 1}/${files.length})...'),
-                        ],
-                      )
-                    : const Text(AppStrings.sendButton),
-              ),
+            ),
           ],
         ),
       ),

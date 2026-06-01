@@ -55,59 +55,67 @@ class SettingsScreen extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.paperWhite,
       appBar: AppBar(
-        title: const Text(AppStrings.settingsTitle),
+        title: const Text(AppStrings.settingsTitle, style: TextStyle(fontWeight: FontWeight.w900)),
         surfaceTintColor: Colors.transparent,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
           // Device profile section
-          Card(
-            elevation: 0,
-            color: AppColors.surface,
-            shape: RoundedRectangleBorder(
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
               borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: AppColors.outline.withValues(alpha: 0.2),
-              ),
+              border: Border.all(color: AppColors.neoBlack, width: 2),
+              boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(4, 4))],
             ),
             child: Column(
               children: [
                 ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: AppColors.primaryContainer,
-                    child: Icon(Icons.person_rounded, color: AppColors.primary),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.paperWhite,
+                      border: Border.all(color: AppColors.neoBlack, width: 1.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.person_rounded, color: AppColors.neoBlack),
                   ),
-                  title: const Text(AppStrings.settingsDeviceName),
+                  title: const Text(AppStrings.settingsDeviceName, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppColors.neoBlack)),
                   subtitle: Text(
                     settings.deviceName,
                     style: const TextStyle(
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w900,
                       fontSize: 16,
-                      color: AppColors.secondary,
+                      color: AppColors.neoBlue,
                     ),
                   ),
-                  trailing: const Icon(Icons.edit_rounded, size: 20),
+                  trailing: const Icon(Icons.edit_rounded, size: 24, color: AppColors.neoBlack),
                   onTap: () => _showEditNameDialog(context, ref, settings.deviceName),
                 ),
-                const Divider(height: 1, indent: 70),
+                const Divider(height: 1, thickness: 1.5, color: AppColors.neoBlack, indent: 70),
                 ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: AppColors.surfaceVariant,
-                    child: Icon(Icons.folder_open_rounded, color: AppColors.textSecondary),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.paperWhite,
+                      border: Border.all(color: AppColors.neoBlack, width: 1.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.folder_open_rounded, color: AppColors.neoBlack),
                   ),
-                  title: const Text(AppStrings.settingsSaveFolder),
+                  title: const Text(AppStrings.settingsSaveFolder, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppColors.neoBlack)),
                   subtitle: Text(
                     settings.saveFolder,
-                    style: const TextStyle(fontSize: 13),
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           // Features Toggle Header
           const Padding(
@@ -115,50 +123,60 @@ class SettingsScreen extends ConsumerWidget {
             child: Text(
               'Fitur & Sinkronisasi',
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textSecondary,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: AppColors.neoBlack,
               ),
             ),
           ),
 
           // Features Toggle Card
-          Card(
-            elevation: 0,
-            color: AppColors.surface,
-            shape: RoundedRectangleBorder(
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.paperWhite,
               borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: AppColors.outline.withValues(alpha: 0.2),
-              ),
+              border: Border.all(color: AppColors.neoBlack, width: 2),
+              boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(4, 4))],
             ),
             child: Column(
               children: [
                 SwitchListTile(
-                  secondary: const Icon(Icons.sync_rounded),
-                  title: const Text(AppStrings.settingsClipboardAutoSync),
-                  subtitle: const Text('Otomatis bagikan salinan teks antar device'),
+                  secondary: const Icon(Icons.sync_rounded, color: AppColors.neoBlack, size: 28),
+                  title: const Text(AppStrings.settingsClipboardAutoSync, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                  subtitle: const Text('Otomatis bagikan salinan teks antar device', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                   value: settings.clipboardAutoSync,
+                  activeColor: AppColors.acidYellow,
+                  activeTrackColor: AppColors.neoBlack,
+                  inactiveThumbColor: AppColors.textSecondary,
+                  inactiveTrackColor: AppColors.surfaceVariant,
                   onChanged: (val) {
                     ref.read(settingsProvider.notifier).updateClipboardAutoSync(val);
                   },
                 ),
-                const Divider(height: 1, indent: 70),
+                const Divider(height: 1, thickness: 1.5, color: AppColors.neoBlack),
                 SwitchListTile(
-                  secondary: const Icon(Icons.security_rounded),
-                  title: const Text(AppStrings.settingsConfirmReceive),
-                  subtitle: const Text(AppStrings.settingsConfirmReceiveSubtitle),
+                  secondary: const Icon(Icons.security_rounded, color: AppColors.neoBlack, size: 28),
+                  title: const Text(AppStrings.settingsConfirmReceive, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                  subtitle: const Text(AppStrings.settingsConfirmReceiveSubtitle, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                   value: settings.confirmBeforeReceive,
+                  activeColor: AppColors.acidYellow,
+                  activeTrackColor: AppColors.neoBlack,
+                  inactiveThumbColor: AppColors.textSecondary,
+                  inactiveTrackColor: AppColors.surfaceVariant,
                   onChanged: (val) {
                     ref.read(settingsProvider.notifier).updateConfirmBeforeReceive(val);
                   },
                 ),
-                const Divider(height: 1, indent: 70),
+                const Divider(height: 1, thickness: 1.5, color: AppColors.neoBlack),
                 SwitchListTile(
-                  secondary: const Icon(Icons.android_rounded),
-                  title: const Text('Jalankan di Latar Belakang'),
-                  subtitle: const Text('Server tetap aktif saat aplikasi ditutup'),
+                  secondary: const Icon(Icons.android_rounded, color: AppColors.neoBlack, size: 28),
+                  title: const Text('Jalankan di Latar Belakang', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                  subtitle: const Text('Server tetap aktif saat aplikasi ditutup', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                   value: settings.backgroundRunning,
+                  activeColor: AppColors.acidYellow,
+                  activeTrackColor: AppColors.neoBlack,
+                  inactiveThumbColor: AppColors.textSecondary,
+                  inactiveTrackColor: AppColors.surfaceVariant,
                   onChanged: (val) {
                     ref.read(settingsProvider.notifier).updateBackgroundRunning(val);
                   },
@@ -166,25 +184,28 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           // About App Section
-          Card(
-            elevation: 0,
-            color: AppColors.surface,
-            shape: RoundedRectangleBorder(
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.acidYellow,
               borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: AppColors.outline.withValues(alpha: 0.2),
-              ),
+              border: Border.all(color: AppColors.neoBlack, width: 2),
+              boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(4, 4))],
             ),
-            child: const ListTile(
-              leading: CircleAvatar(
-                backgroundColor: AppColors.primaryContainer,
-                child: Icon(Icons.info_outline_rounded, color: AppColors.primary),
+            child: ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.paperWhite,
+                  border: Border.all(color: AppColors.neoBlack, width: 1.5),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.info_outline_rounded, color: AppColors.neoBlack),
               ),
-              title: Text(AppStrings.settingsAppVersion),
-              subtitle: Text('LShare v1.1.1 • Indonesia'),
+              title: const Text(AppStrings.settingsAppVersion, style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.neoBlack)),
+              subtitle: const Text('LShare v1.1.2 • Indonesia', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.neoBlack)),
             ),
           ),
         ],
