@@ -24,6 +24,7 @@ import 'features/settings/settings_provider.dart';
 import 'features/send/send_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'features/important_text/important_text_provider.dart';
+import 'features/clipboard/clipboard_auth_provider.dart';
 
 class LShareApp extends StatelessWidget {
   const LShareApp({super.key});
@@ -83,9 +84,10 @@ class _MainShellState extends ConsumerState<MainShell> {
           }
         }
       });
-      // Initialize Important Text PIN
+      // Initialize PINs and Auth
       SharedPreferences.getInstance().then((prefs) {
         initImportantTextPin(ref, prefs);
+        initClipboardAuth(ref, prefs);
       });
     });
   }

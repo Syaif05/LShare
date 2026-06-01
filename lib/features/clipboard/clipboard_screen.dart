@@ -8,17 +8,54 @@ import '../../shared/widgets/neo_button.dart';
 import '../settings/settings_provider.dart';
 import 'clipboard_provider.dart';
 import '../../core/constants/app_colors.dart';
+import 'clipboard_auth_provider.dart';
+import '../../core/constants/app_colors.dart';
 import '../important_text/important_text_screen.dart';
 
-class ClipboardScreen extends ConsumerWidget {
+class ClipboardScreen extends ConsumerStatefulWidget {
   const ClipboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ClipboardScreen> createState() => _ClipboardScreenState();
+}
+
+class _ClipboardScreenState extends ConsumerState<ClipboardScreen> {
+  final TextEditingController _pinController = TextEditingController();
+  bool _isLoading = false;
+  String? _errorMsg;
+
+  @override
+  void dispose() {
+    _pinController.dispose();
+    super.dispose();
+  }
+
+  void _submitPin() async {
+    if (_pinController.text.isEmpty) return;
+    setState(() { _isLoading = true; _errorMsg = null; });
+    
+    // We need a short delay just for visual feedback if it's too fast
+    await Future.delayed(const Duration(milliseconds: 300));
+    final success = await unlockWithPin(ref, _pinController.text);
+    
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        if (!success) {
+          _errorMsg = 'PIN Salah!';
+          _pinController.clear();
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final syncEnabled = ref.watch(clipboardSyncEnabledProvider);
     final history = ref.watch(filteredClipboardHistoryProvider);
     final allHistory = ref.watch(clipboardHistoryProvider);
     final connectedDevices = ref.watch(clipboardConnectionsProvider);
+    final isUnlocked = ref.watch(clipboardAuthStatusProvider);
     final isConnected = connectedDevices.isNotEmpty;
     final errorMessage = ref.watch(clipboardErrorProvider);
 
@@ -30,11 +67,9 @@ class ClipboardScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.paperWhite,
       appBar: AppBar(
-        title: const Text(
-          AppStrings.clipboardTitle,
-        ),
+        title: const Text(AppStrings.clipboardTitle),
       ),
-      body: CustomScrollView(
+      body: !isUnlocked ? _buildLockedScreen() : CustomScrollView(
         slivers: [
           // Toggle sync card
           SliverToBoxAdapter(
@@ -357,6 +392,77 @@ class ClipboardScreen extends ConsumerWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLockedScreen() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.acidYellow,
+                border: Border.all(color: AppColors.neoBlack, width: 3),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [BoxShadow(color: AppColors.neoBlack, offset: Offset(6, 6))],
+              ),
+              child: const Icon(Icons.lock_person_rounded, size: 64, color: AppColors.neoBlack),
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Akses Terkunci',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.neoBlack),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Masukkan PIN rahasia untuk membuka fitur Sinkronisasi Clipboard, atau tunggu perangkat lain membagikan kunci.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+            ),
+            const SizedBox(height: 32),
+            TextField(
+              controller: _pinController,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              decoration: InputDecoration(
+                hintText: 'Masukkan PIN',
+                errorText: _errorMsg,
+                filled: true,
+                fillColor: AppColors.paperWhite,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.neoBlack, width: 2),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.neoBlack, width: 2),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.neoBlack, width: 3),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: NeoButton(
+                onPressed: _isLoading ? () {} : _submitPin,
+                backgroundColor: AppColors.neoBlack,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: _isLoading 
+                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: AppColors.acidYellow, strokeWidth: 3))
+                  : const Text('Buka Kunci', style: TextStyle(color: AppColors.acidYellow, fontSize: 16, fontWeight: FontWeight.w900)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

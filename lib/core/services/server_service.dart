@@ -13,6 +13,7 @@ import '../../features/receive/receive_provider.dart';
 import '../utils/file_utils.dart';
 import '../utils/network_utils.dart';
 import '../../features/settings/settings_provider.dart';
+import '../../features/clipboard/clipboard_auth_provider.dart';
 
 final serverServiceProvider = Provider<ServerService>((ref) {
   return ServerService(ref);
@@ -58,6 +59,22 @@ class ServerService {
           }),
           headers: {'Content-Type': 'application/json'},
         );
+      });
+
+      // GET /clipboard-keys
+      router.get('/clipboard-keys', (Request request) {
+        final isUnlocked = _ref.read(clipboardAuthStatusProvider);
+        if (isUnlocked) {
+          final url = _ref.read(clipboardDecryptedUrlProvider);
+          final key = _ref.read(clipboardDecryptedKeyProvider);
+          if (url != null && key != null) {
+            return Response.ok(
+              jsonEncode({'url': url, 'key': key}),
+              headers: {'Content-Type': 'application/json'},
+            );
+          }
+        }
+        return Response.forbidden(jsonEncode({'error': 'locked'}));
       });
 
       // POST /request - File transfer request from sender (supports batch)

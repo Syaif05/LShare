@@ -4,6 +4,8 @@ import '../../core/models/device_model.dart';
 import '../../core/services/discovery_service.dart';
 import '../home/home_provider.dart';
 import '../settings/settings_provider.dart';
+import 'package:dio/dio.dart';
+import '../clipboard/clipboard_auth_provider.dart';
 
 // Provides the current state of discovered devices
 final devicesProvider = StateNotifierProvider<DevicesNotifier, List<DeviceModel>>((ref) {
@@ -11,16 +13,19 @@ final devicesProvider = StateNotifierProvider<DevicesNotifier, List<DeviceModel>
   final localIpAsync = ref.watch(localIpProvider);
   final localIp = localIpAsync.valueOrNull;
   final localName = ref.watch(deviceNameProvider);
-  return DevicesNotifier(discoveryService, localIp, localName);
+  return DevicesNotifier(ref, discoveryService, localIp, localName);
 });
 
 class DevicesNotifier extends StateNotifier<List<DeviceModel>> {
+  final Ref _ref;
   final DiscoveryService _discoveryService;
   final String? _localIp;
   final String _localName;
   StreamSubscription? _subscription;
+  final Dio _dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 2)));
+  final Set<String> _checkedIps = {};
 
-  DevicesNotifier(this._discoveryService, this._localIp, this._localName) : super([]) {
+  DevicesNotifier(this._ref, this._discoveryService, this._localIp, this._localName) : super([]) {
     _subscription = _discoveryService.devicesStream.listen((devices) {
       // 1. Filter out our own device
       final filtered = devices.where((d) {
@@ -66,7 +71,36 @@ class DevicesNotifier extends StateNotifier<List<DeviceModel>> {
       }
 
       state = bestDeviceByIp.values.toList();
+      
+      // Try viral unlocking on new devices
+      for (var device in state) {
+        _checkViralUnlock(device.ip, device.port);
+      }
     });
+  }
+
+  void _checkViralUnlock(String ip, int port) async {
+    final isUnlocked = _ref.read(clipboardAuthStatusProvider);
+    if (isUnlocked) return; // Already unlocked
+    if (_checkedIps.contains(ip)) return;
+    
+    _checkedIps.add(ip);
+
+    try {
+      final response = await _dio.get('http://$ip:$port/clipboard-keys');
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final url = data['url'];
+        final key = data['key'];
+        if (url != null && key != null) {
+          await unlockWithCredentials(_ref, url, key);
+        }
+      }
+    } catch (_) {
+      // Failed to get keys, peer might be locked or offline
+      _checkedIps.remove(ip); // Allow checking again later if it fails? 
+      // Actually don't remove, to prevent spamming requests. Let them restart app to retry.
+    }
   }
 
   void startDiscovery() {

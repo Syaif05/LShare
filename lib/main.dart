@@ -8,16 +8,8 @@ import 'core/constants/app_constants.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Supabase if keys are provided
-  if (kSupabaseUrl != 'YOUR_SUPABASE_URL' && kSupabaseAnonKey != 'YOUR_SUPABASE_ANON_KEY') {
-    await Supabase.initialize(
-      url: kSupabaseUrl,
-      anonKey: kSupabaseAnonKey,
-    );
-  } else {
-    print('WARNING: Supabase URL and Anon Key are not set. Clipboard Sync will not work.');
-  }
-
+  // Supabase will be initialized later when the user enters the PIN or gets keys virally.
+  
   runApp(
     const ProviderScope(
       child: LShareApp(),
