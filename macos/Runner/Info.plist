@@ -28,5 +28,11 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>LShare membutuhkan akses jaringan lokal untuk menemukan dan mentransfer file ke perangkat lain di jaringan WiFi yang sama.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_lshare._tcp</string>
+	</array>
 </dict>
 </plist>
